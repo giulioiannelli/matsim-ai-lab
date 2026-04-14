@@ -20,7 +20,16 @@ hs_err_pid*
 /output/
 /test/output/
 /bin/
+/matsim_llm_plugins/
+/matsim-py-analysis/
 
-# IntelliJ
+# Build artifacts
+dependency-reduced-pom.xml
+
+# IDE
 /.idea/
 *.iml
+/.vscode/
+
+# Misc
+cp.txt
