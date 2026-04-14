@@ -31,8 +31,39 @@ All commands must be prefixed with `eval "$(conda shell.bash hook 2>/dev/null)" 
 
 ### Quick summary
 ```bash
-python3 -m matsim_py_analysis analyze <output-dir>
+matsim-analyze analyze <output-dir>
 ```
+
+### Reasoning & bottlenecks (regex-based, fast)
+```bash
+matsim-analyze reasoning <output-dir>      # reasoning categories, tool demand
+matsim-analyze bottlenecks <output-dir>    # failure classification, tool gap
+matsim-analyze compare <dir-a> <dir-b>     # A/B comparison of two runs
+```
+
+### NLP pipeline (Phase 6 — LLM-as-judge via local Ollama)
+
+Requires Ollama running (`ollama serve`). Pass `--no-llm` for regex fallback.
+
+```bash
+# Classify reasoning traces into decision categories
+matsim-analyze classify <output-dir>              # LLM-as-judge (slow, accurate)
+matsim-analyze classify --no-llm <output-dir>     # regex fallback (fast)
+
+# Score plan satisfaction from reasoning
+matsim-analyze sentiment <output-dir>
+matsim-analyze sentiment --no-llm <output-dir>
+
+# Mine decision patterns + cluster using embeddings
+matsim-analyze decisions <output-dir>             # uses nomic-embed-text + kmeans
+matsim-analyze decisions --no-embeddings <output-dir>
+
+# Full feedback loop: NLP metrics <-> MATSim scores
+matsim-analyze feedback <output-dir>              # correlations, decision predictability, realism
+matsim-analyze feedback --no-llm <output-dir>     # fast regex-only mode
+```
+
+The `feedback` command is the money-maker for research — it joins NLP classifications with MATSim scores, computes decision predictability via Random Forest, and validates physical realism (car constraints, PT chain handling, route grounding).
 
 ### Specific analyses (via Python)
 
