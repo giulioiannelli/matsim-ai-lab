@@ -1,0 +1,102 @@
+# Model profiles — per-model overrides applied on top of LLMConfigGroup defaults.
+#
+# Keyed by model name (the value of -Dexec.args=... second arg / --model-name).
+# A profile is looked up by the modelName configured in the runner; if none
+# matches, LLMConfigGroup defaults win.
+#
+# Fields:
+#   maxTokens        : cap on total completion tokens (reasoning + output combined
+#                      for backends that don't split them, e.g. Ollama).
+#   contextWindow    : total context window (prompt + completion) in tokens. Mapped
+#                      to Ollama's options.num_ctx. Set high enough to hold system
+#                      prompt + plan JSON + tool definitions + multi-turn history.
+#                      Ignored by OpenAI-compat backends.
+#   temperature      : sampling temperature.
+#   enableThinking   : whether to send think=true / enable_thinking=true to the
+#                      backend. Reasoning models should have this on.
+#   isReasoning      : model emits a separate reasoning stream. When true, the
+#                      runner disables grammar-constrained decoding (which would
+#                      otherwise exhaust the token budget inside the think trace
+#                      before the tool-call JSON can emit).
+#   thinkingTokenCap : soft cap on reasoning-token count per round. 0 means unlimited
+#                      (bounded only by maxTokens). When > 0 and reasoning exceeds
+#                      this value, thinkingTokenCapHit is incremented for that round.
+#                      Advisory only — no truncation enforced at the request level.
+#   endpointStyle    : openai_compat | ollama_native. Use ollama_native for local
+#                      Ollama models so tool calls land in the structured field
+#                      instead of leaking into content.
+
+profiles:
+
+  # Non-thinking baseline — regression reference, compatible with grammar mode.
+  "qwen2.5:7b":
+    maxTokens: 4096
+    contextWindow: 8192
+    temperature: 0.3
+    enableThinking: false
+    isReasoning: false
+    thinkingTokenCap: 0
+
+  "llama3.1:8b":
+    maxTokens: 4096
+    contextWindow: 8192
+    temperature: 0.3
+    enableThinking: false
+    isReasoning: false
+    thinkingTokenCap: 0
+
+  # Reasoning models — grammar OFF, think ON, native endpoint preferred so tool
+  # calls land in the structured field.
+  "qwen3.5":
+    maxTokens: 4096
+    contextWindow: 8192
+    temperature: 0.3
+    enableThinking: true
+    isReasoning: true
+    thinkingTokenCap: 2048
+    endpointStyle: ollama_native
+
+  "qwen3.5:latest":
+    maxTokens: 4096
+    contextWindow: 8192
+    temperature: 0.3
+    enableThinking: true
+    isReasoning: true
+    thinkingTokenCap: 2048
+    endpointStyle: ollama_native
+
+  "qwen3:14b":
+    maxTokens: 6144
+    contextWindow: 12288
+    temperature: 0.3
+    enableThinking: true
+    isReasoning: true
+    thinkingTokenCap: 3072
+    endpointStyle: ollama_native
+
+  "deepseek-r1-distill-qwen:7b":
+    maxTokens: 6144
+    contextWindow: 12288
+    temperature: 0.3
+    enableThinking: true
+    isReasoning: true
+    thinkingTokenCap: 2048
+    endpointStyle: ollama_native
+
+  "deepseek-r1-distill-qwen:14b":
+    maxTokens: 8192
+    contextWindow: 16384
+    temperature: 0.3
+    enableThinking: true
+    isReasoning: true
+    thinkingTokenCap: 3072
+    endpointStyle: ollama_native
+
+  # Small edge model — grammar-compatible.
+  "gemma4:e4b":
+    maxTokens: 4096
+    contextWindow: 8192
+    temperature: 0.3
+    enableThinking: false
+    isReasoning: false
+    thinkingTokenCap: 0
