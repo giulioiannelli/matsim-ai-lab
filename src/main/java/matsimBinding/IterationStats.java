@@ -18,6 +18,7 @@ public class IterationStats {
     public long totalTokens;
 
     public long thinkingTokenCapHit;
+    public long comparisonToolInvocations;
 
     public double avgDurationMs;
     public double avgTokensPerReplan;

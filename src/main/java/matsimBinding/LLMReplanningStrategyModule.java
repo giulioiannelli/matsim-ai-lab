@@ -145,7 +145,8 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 	                "totalTokens",
 	                "avgTokensPerRound",
 	                "tokensPerSecond",
-	                "thinkingTokenCapHit"
+	                "thinkingTokenCapHit",
+	                "comparisonToolInvocations"
 	        ));
 	        csvWriter.newLine();
 
@@ -175,7 +176,8 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 	                    "totalTokens",
 	                    "avgTokensPerRound",
 	                    "tokensPerSecond",
-	                    "thinkingTokenCapHit"
+	                    "thinkingTokenCapHit",
+	                    "comparisonToolInvocations"
 	            ));
 	            combinedCsvWriter.newLine();
 	        }
@@ -224,7 +226,8 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 	                String.valueOf(stats.totalTokens),
 	                String.valueOf(avgTokensPerRound),
 	                String.valueOf(tokensPerSecond),
-	                String.valueOf(stats.thinkingTokenCapHit)
+	                String.valueOf(stats.thinkingTokenCapHit),
+	                String.valueOf(stats.comparisonToolInvocations)
 	        );
 
 	        if (csvWriter != null) {
@@ -330,14 +333,20 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 	 * Picks the system message for the chat manager based on the configured prompt
 	 * variant. {@code legacy} feeds the rule-centric plan-reconstruction prompt
 	 * (original behavior); {@code persona} feeds the first-person template with
-	 * attribute lines rendered from the person.
+	 * attribute lines rendered from the person. When comparison tools are active
+	 * an addendum describing them is appended to the chosen base prompt.
 	 */
-	private static String buildSystemMessageForVariant(String variant, Person person) {
+	private static String buildSystemMessageForVariant(String variant, Person person, boolean comparisonToolsEnabled) {
+		String base;
 		if ("persona".equalsIgnoreCase(variant)) {
-			return prompts.PersonaPromptBuilder.buildSystemPrompt(person);
+			base = prompts.PersonaPromptBuilder.buildSystemPrompt(person);
+		} else {
+			base = IndividualPrompt.planReconstructionSystemPrompt
+					+ " You are person " + person.getId().toString();
 		}
-		return IndividualPrompt.planReconstructionSystemPrompt
-				+ " You are person " + person.getId().toString();
+		return comparisonToolsEnabled
+				? base + IndividualPrompt.comparisonToolsAddendum
+				: base;
 	}
 
 	/** User message that carries the plan JSON; shape depends on prompt variant. */
@@ -370,6 +379,7 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 	        out.reasoningTokens += s.reasoningTokens;
 	        out.totalTokens += s.totalTokens;
 	        out.thinkingTokenCapHit += s.thinkingTokenCapHit;
+	        out.comparisonToolInvocations += s.comparisonToolInvocations;
 	    }
 
 	    out.avgDurationMs = out.totalAgents == 0 ? 0 :
@@ -415,7 +425,10 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 				metaData.put("type", "attribute");
 				//this.vectorDB.insert(context,metaData);//inserted in agent experience handler
 				DefaultChatManager chatManager = new DefaultChatManager(Id.create(p.getKey().toString(), IChatManager.class), chatClient, toolManager, vectorDB, this.llmConfig);
-				chatManager.setSystemMessage(buildSystemMessageForVariant(llmConfig.getPromptVariant(), p.getValue()));
+				chatManager.setSystemMessage(buildSystemMessageForVariant(
+						llmConfig.getPromptVariant(),
+						p.getValue(),
+						llmConfig.isComparisonToolsEnabled()));
 				chatManager.setPersonId(p.getKey());
 				p.getValue().getAttributes().putAttribute("isAI", true);
 				chatManager.setContextObject(new HashMap<>(this.contextObject));

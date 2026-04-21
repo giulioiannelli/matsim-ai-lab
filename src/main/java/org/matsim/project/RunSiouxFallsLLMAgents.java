@@ -82,6 +82,10 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
             description = "Override total context window in tokens (Ollama num_ctx). 0 = leave backend default.")
     private Integer contextWindowOverride;
 
+    @Option(names = {"--enable-comparison-tools"},
+            description = "Register compare_routes and evaluate_plan tools and advertise them in the system prompt.")
+    private boolean enableComparisonTools;
+
     public static void main(String[] args) {
         int exit = new CommandLine(new RunSiouxFallsLLMAgents()).execute(args);
         System.exit(exit);
@@ -125,6 +129,7 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
             llmConfig.setContextWindowTokens(contextWindowOverride);
         }
         llmConfig.setPromptVariant(promptVariant);
+        llmConfig.setComparisonToolsEnabled(enableComparisonTools);
 
         // Model name must reflect what we actually send to the server; restore if
         // the profile key differed from the true Ollama tag.
@@ -157,7 +162,9 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         Scenario scenario = ScenarioUtils.loadScenario(config);
         Controler controler = new Controler(scenario);
         controler.addOverridingModule(new SimWrapperModule());
-        controler.addOverridingModule(new LLMIntegrationModule(LLMIntegrationModule.ConnectionType.replanning));
+        controler.addOverridingModule(new LLMIntegrationModule(
+                LLMIntegrationModule.ConnectionType.replanning,
+                llmConfig.isComparisonToolsEnabled()));
 
         System.out.println("\n=== Running Sioux Falls with LLM-Powered Agent Replanning ===");
         System.out.println("Iterations: " + iterations);
@@ -193,6 +200,7 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         if (Boolean.getBoolean("matsim.llm.grammar")) sb.append("-grammar");
         if (cfg.isReasoningModel()) sb.append("-reasoning");
         if ("persona".equalsIgnoreCase(cfg.getPromptVariant())) sb.append("-persona");
+        if (cfg.isComparisonToolsEnabled()) sb.append("-cmp");
         return sb.toString();
     }
 }

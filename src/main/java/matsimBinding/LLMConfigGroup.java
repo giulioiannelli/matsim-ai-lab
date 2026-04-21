@@ -446,6 +446,14 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
      */
     private String promptVariant = "legacy";
 
+    /**
+     * When {@code true}, the comparison toolset ({@code compare_routes},
+     * {@code evaluate_plan}) is registered alongside the baseline tools. Default
+     * {@code false} keeps the tool surface unchanged. The tools are advertised
+     * to the LLM via a prompt addendum only when this flag is on.
+     */
+    private boolean comparisonToolsEnabled = false;
+
     // ========================================================================
     // BACKEND ENUM DEFINITION
     // ========================================================================
@@ -781,6 +789,14 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
     @StringSetter("promptVariant")
     public void setPromptVariant(String promptVariant) {
         this.promptVariant = promptVariant == null ? "legacy" : promptVariant.toLowerCase();
+    }
+
+    @StringGetter("comparisonToolsEnabled")
+    public boolean isComparisonToolsEnabled() { return comparisonToolsEnabled; }
+
+    @StringSetter("comparisonToolsEnabled")
+    public void setComparisonToolsEnabled(boolean comparisonToolsEnabled) {
+        this.comparisonToolsEnabled = comparisonToolsEnabled;
     }
 
     // ========================================================================

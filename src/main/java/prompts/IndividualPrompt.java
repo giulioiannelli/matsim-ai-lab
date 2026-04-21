@@ -144,6 +144,25 @@ public class IndividualPrompt {
 	public static final String personaTaskPrompt =
 			  "Here is today's plan, from the survey:\n"
 			+ "\n";
+
+	/**
+	 * Short block describing the comparison toolset. Appended to the active
+	 * system prompt only when {@code comparisonToolsEnabled=true}. Written in
+	 * persona voice so it blends with the persona template without fighting it.
+	 */
+	public static final String comparisonToolsAddendum =
+			  "\n\n"
+			+ "Two extra tools help you weigh alternatives:\n"
+			+ "- `compare_routes` — give it an origin, a destination, a departure time, and a "
+			+ "comma-separated list of modes (e.g. \"car,pt,bike\"). It returns each mode's "
+			+ "travel time, distance, and — for pt — transfer count. Read the table and say "
+			+ "which mode you would actually pick and why.\n"
+			+ "- `evaluate_plan` — hand it a full plan JSON before you finalise. It returns "
+			+ "totals, mode mix, and structural warnings (e.g. a car leg starting where your "
+			+ "car isn't parked). No score, no judgment — that part is yours.\n"
+			+ "\n"
+			+ "Use them when a choice feels close or when you want to sanity-check a day "
+			+ "before calling `extract_plan`.";
 	
 	/**
 	 * Tool-first system prompt (v2): prescribes a workflow of tool calls
