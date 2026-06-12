@@ -61,8 +61,7 @@ public final class PersonaPromptBuilder {
 
         renderAgeSex(attrs).ifPresent(lines::add);
         renderEmployment(attrs).ifPresent(lines::add);
-        renderCar(attrs).ifPresent(lines::add);
-        renderLicense(attrs).ifPresent(lines::add);
+        lines.addAll(renderMobility(attrs));
         renderBike(attrs).ifPresent(lines::add);
 
         if (lines.isEmpty()) {
@@ -103,26 +102,57 @@ public final class PersonaPromptBuilder {
         return Optional.empty();
     }
 
-    private static Optional<String> renderCar(Map<String, Object> attrs) {
+    /**
+     * Describe car access and driving licence together so the two never
+     * contradict each other. A car the person owns but cannot legally drive
+     * (no licence) must not read as "a car you can use whenever you want": that
+     * mismatch with {@code available_modes} — which reports "Person does not
+     * have a driving license" — makes the small model waste rounds trying to
+     * reconcile the prompt with the tool. Mirrors the car gating in
+     * {@link tools.Implement.AvailableModesTool}: a car is drivable only with
+     * both a licence and an available car. The licence is only asserted when
+     * the attribute is present, so populations that don't model licences are
+     * unaffected.
+     */
+    private static List<String> renderMobility(Map<String, Object> attrs) {
         String carAvail = strAttr(attrs, "car_avail");
         if (carAvail == null) carAvail = strAttr(attrs, "carAvail");
-        if (carAvail == null) return Optional.empty();
+        String car = carAvail == null ? null : carAvail.toLowerCase();
+        boolean carOwned = "always".equals(car) || "sometimes".equals(car);
 
-        return switch (carAvail.toLowerCase()) {
-            case "always" -> Optional.of("- You have a car you can use whenever you want.");
-            case "sometimes" -> Optional.of("- You can use a car sometimes, not always.");
-            case "never" -> Optional.of("- You don't have a car available.");
-            default -> Optional.empty();
-        };
-    }
-
-    private static Optional<String> renderLicense(Map<String, Object> attrs) {
         String lic = strAttr(attrs, "hasLicense");
-        if (lic == null) return Optional.empty();
-        boolean yes = "yes".equalsIgnoreCase(lic) || "true".equalsIgnoreCase(lic);
-        return Optional.of(yes
-                ? "- You have a driver's license."
-                : "- You don't have a driver's license.");
+        Boolean hasLicense = lic == null ? null
+                : ("yes".equalsIgnoreCase(lic) || "true".equalsIgnoreCase(lic) || "1".equals(lic));
+
+        List<String> lines = new ArrayList<>();
+        if (carOwned) {
+            if (Boolean.FALSE.equals(hasLicense)) {
+                lines.add("- There is a car in your household, but you don't have a driver's"
+                        + " license, so you can't drive it yourself — you'd ride as a passenger"
+                        + " or use other modes.");
+            } else if (Boolean.TRUE.equals(hasLicense)) {
+                lines.add("always".equals(car)
+                        ? "- You have a car and can drive it whenever you want."
+                        : "- You have a driver's license and a car you can use sometimes.");
+            } else {
+                lines.add("always".equals(car)
+                        ? "- You have a car you can use whenever you want."
+                        : "- You can use a car sometimes, not always.");
+            }
+        } else if ("never".equals(car)) {
+            if (Boolean.TRUE.equals(hasLicense)) {
+                lines.add("- You have a driver's license, but no car available.");
+            } else if (Boolean.FALSE.equals(hasLicense)) {
+                lines.add("- You don't have a car, and you don't have a driver's license.");
+            } else {
+                lines.add("- You don't have a car available.");
+            }
+        } else if (Boolean.TRUE.equals(hasLicense)) {
+            lines.add("- You have a driver's license.");
+        } else if (Boolean.FALSE.equals(hasLicense)) {
+            lines.add("- You don't have a driver's license.");
+        }
+        return lines;
     }
 
     private static Optional<String> renderBike(Map<String, Object> attrs) {
