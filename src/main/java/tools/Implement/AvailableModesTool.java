@@ -80,7 +80,12 @@ public class AvailableModesTool implements ITool<String> {
 
         // Extract person attributes
         Map<String, Object> attrs = person.getAttributes().getAsMap();
-        boolean hasLicense = decodeYesNo(attrs.get("hasLicense"));
+        // Driving licences are not modelled in every scenario (e.g. Sioux Falls,
+        // where car access is governed by carAvail + assigned vehicle). A missing
+        // attribute must not be read as "unlicensed" — that would deny car to
+        // every car-owning agent and contradict their own survey plans. Absent =>
+        // assume licensed; explicit yes/no still honoured.
+        boolean hasLicense = attrs.get("hasLicense") == null || decodeYesNo(attrs.get("hasLicense"));
         String carAvail = attrs.get("carAvail") != null ? attrs.get("carAvail").toString() : "never";
         String bikeAvail = attrs.get("bikeAvailability") != null ? attrs.get("bikeAvailability").toString() : "never";
 

@@ -627,7 +627,9 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 
 	    // --- Available modes per trip origin (same logic as AvailableModesTool) ---
 	    Map<String, Object> attrs = person.getAttributes().getAsMap();
-	    boolean hasLicense = decodeYesNoAttr(attrs.get("hasLicense"));
+	    // Absent licence => assume licensed (scenarios like Sioux Falls do not
+	    // model licences; see AvailableModesTool for the rationale).
+	    boolean hasLicense = attrs.get("hasLicense") == null || decodeYesNoAttr(attrs.get("hasLicense"));
 	    String carAvail = attrs.get("carAvail") != null ? attrs.get("carAvail").toString() : "never";
 	    String bikeAvail = attrs.get("bikeAvailability") != null ? attrs.get("bikeAvailability").toString() : "never";
 	    boolean carOwned = !"never".equalsIgnoreCase(carAvail);
