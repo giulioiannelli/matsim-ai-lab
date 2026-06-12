@@ -304,6 +304,27 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 				writeRow(stats, person, null);
 				return;
 			}
+			// The extract_plan fallback can return the agent's own current plan
+			// (person.getSelectedPlan()), which is the very object referenced by
+			// `plan` here. copyFromTo clears the destination first, so a self-copy
+			// would empty the plan and crash the mobsim. Keep it unchanged instead.
+			if (outPlan == plan) {
+				log.warn("Extracted plan for person " + person.getId()
+						+ " is the original (extract_plan fallback); keeping it unchanged.");
+				writeRow(stats, person, null);
+				return;
+			}
+			// Never apply a degenerate plan: an extracted plan with no activities
+			// would crash the mobsim ("Plan must consist of at least one activity")
+			// and take down the whole run. Keep the original and record a failure.
+			long outActivities = outPlan.getPlanElements().stream()
+					.filter(pe -> pe instanceof Activity).count();
+			if (outActivities == 0) {
+				log.warn("Extracted plan for person " + person.getId()
+						+ " has no activities; keeping original plan.");
+				writeRow(stats, person, null);
+				return;
+			}
 			PopulationUtils.copyFromTo(outPlan, plan);
 			writeRow(stats,plan.getPerson(),outPlan);
 		  } catch (Exception e) {
@@ -404,43 +425,45 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 		}
 		this.contextObject.put("tripRoutersProvider", this.tripRouterProvider);
 		this.contextObject.put("activityFacilities", scenario.getActivityFacilities());
-		int totalRealPerson = 0;
+		// Collect eligible agents (selected plan has more than 3 elements, i.e. a
+		// real multi-trip day).
+		List<Person> eligible = new ArrayList<>();
 		for(Entry<Id<Person>, ? extends Person> p:this.scenario.getPopulation().getPersons().entrySet()){
 			if(p.getValue().getSelectedPlan().getPlanElements().size()<=3) {
 				continue;
 			}
-			totalRealPerson++;
+			eligible.add(p.getValue());
 		}
-		double prob = ((double)numberOfLLMAgent)/totalRealPerson;
+		// Pick exactly N distinct agents. Shuffle seeded from the MATSim random so the
+		// choice is reproducible per seed and varies across seeds, rather than an
+		// independent per-person probability that yields a random 0/1/2 count.
+		java.util.Collections.shuffle(eligible, new java.util.Random(MatsimRandom.getLocalInstance().nextLong()));
+		int target = Math.min(numberOfLLMAgent, eligible.size());
 		int totalLLMAgent = 0;
-		for(Entry<Id<Person>, ? extends Person> p:this.scenario.getPopulation().getPersons().entrySet()){
-			if(p.getValue().getSelectedPlan().getPlanElements().size()<=3) {
-				continue;
-			}
-			if(MatsimRandom.getLocalInstance().nextDouble()<prob) {
-				this.LLMAgentsId.add(p.getKey());
-				String context = LLMControllerListener.extract(p.getValue()).ragText;
-				Map<String,String> metaData = new HashMap<>();
-				metaData.put("personId", p.getKey().toString());
-				metaData.put("type", "attribute");
-				//this.vectorDB.insert(context,metaData);//inserted in agent experience handler
-				DefaultChatManager chatManager = new DefaultChatManager(Id.create(p.getKey().toString(), IChatManager.class), chatClient, toolManager, vectorDB, this.llmConfig);
-				chatManager.setSystemMessage(buildSystemMessageForVariant(
-						llmConfig.getPromptVariant(),
-						p.getValue(),
-						llmConfig.isComparisonToolsEnabled()));
-				chatManager.setPersonId(p.getKey());
-				p.getValue().getAttributes().putAttribute("isAI", true);
-				chatManager.setContextObject(new HashMap<>(this.contextObject));
-				chatManager.getContextObject().put("person",p.getValue());
+		for(int idx = 0; idx < target; idx++){
+			Person person = eligible.get(idx);
+			this.LLMAgentsId.add(person.getId());
+			String context = LLMControllerListener.extract(person).ragText;
+			Map<String,String> metaData = new HashMap<>();
+			metaData.put("personId", person.getId().toString());
+			metaData.put("type", "attribute");
+			//this.vectorDB.insert(context,metaData);//inserted in agent experience handler
+			DefaultChatManager chatManager = new DefaultChatManager(Id.create(person.getId().toString(), IChatManager.class), chatClient, toolManager, vectorDB, this.llmConfig);
+			chatManager.setSystemMessage(buildSystemMessageForVariant(
+					llmConfig.getPromptVariant(),
+					person,
+					llmConfig.isComparisonToolsEnabled()));
+			chatManager.setPersonId(person.getId());
+			person.getAttributes().putAttribute("isAI", true);
+			chatManager.setContextObject(new HashMap<>(this.contextObject));
+			chatManager.getContextObject().put("person",person);
 
-				if ("staged".equalsIgnoreCase(System.getenv("MATSIM_LLM_TOOL_FILTER"))) {
-					chatManager.setToolFilter(new tools.StagedToolFilter());
-				}
-
-				this.chatContainer.add(chatManager);
-				totalLLMAgent++;
+			if ("staged".equalsIgnoreCase(System.getenv("MATSIM_LLM_TOOL_FILTER"))) {
+				chatManager.setToolFilter(new tools.StagedToolFilter());
 			}
+
+			this.chatContainer.add(chatManager);
+			totalLLMAgent++;
 		}
 		System.out.println("Total LLM agent = "+ totalLLMAgent);
 	}
