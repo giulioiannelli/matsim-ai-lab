@@ -19,6 +19,7 @@ hs_err_pid*
 /target/
 /output/
 /test/output/
+/scenarios/*/output/
 /bin/
 /matsim_llm_plugins/
 /matsim-py-analysis/
