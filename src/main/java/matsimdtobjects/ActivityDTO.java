@@ -89,12 +89,13 @@ public class ActivityDTO extends PlanElementDTO<Activity> {
             em.addErrorMessages("elementType is not activity.");
         }
 
-        if (type != null) {
-            String t = type.trim();
-            if (!t.isEmpty() && !isAllowedType(t)) {
-                em.addErrorMessages("Unknown activity type.");
-                outcome = false;
-            }
+        // Activity types are free-form strings in MATSim; validate that a type is
+        // present rather than against a hardcoded vocabulary, which wrongly rejected
+        // real scenario types (e.g. Sioux Falls "secondary"). An unrecognised type
+        // simply scores with default params and loses on score if it is nonsense.
+        if (type == null || type.trim().isEmpty()) {
+            em.addErrorMessages("Activity type is missing.");
+            outcome = false;
         }
 
         boolean hasFacility = facilityId != null && !facilityId.trim().isEmpty();
@@ -109,13 +110,6 @@ public class ActivityDTO extends PlanElementDTO<Activity> {
 //            em.addErrorMessages("Only one of facilityId or linkId should be present for activity type " + type);
 //            outcome = false;
 //        }
-
-        String t = type.trim();
-        if (!isAllowedType(t)) {
-        	em.addErrorMessages("Unknown activity type.");
-            outcome =  false;
-        }
-
 
         if (endTime != null) {
             if (endTime < 0||endTime>100000) {
@@ -224,24 +218,6 @@ public class ActivityDTO extends PlanElementDTO<Activity> {
         return gson.fromJson(obj, ActivityDTO.class);
     }
 
-    private static boolean isAllowedType(String t) {
-        return "home".equals(t)
-                || "work".equals(t)
-                || "education".equals(t)
-                || "shop".equals(t)
-                || "leisure".equals(t)
-                || "other".equals(t)
-                || "errands".equals(t)
-
-
-                // stage / interaction activities
-                || "pt interaction".equals(t)
-                || "car interaction".equals(t)
-                || "bike interaction".equals(t)
-                || "car_passenger interaction".equals(t);
-    }
-
-    
 
     @Override
     public String getElementType() {
