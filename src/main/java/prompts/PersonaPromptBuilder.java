@@ -45,7 +45,10 @@ public final class PersonaPromptBuilder {
                 + planJson
                 + "\n\nReorganize it as you see fit — keep what feels right, change what doesn't."
                 + " Talk through your choices as you go."
-                + " When you're happy with it, call extract_plan with your final plan.";
+                + " Once you have the facts you need, decide and commit — don't re-check routes"
+                + " or modes you have already looked up. Keeping the plan exactly as it is can be"
+                + " the right call, but you must still call extract_plan with it to lock it in."
+                + " As soon as you are satisfied, call extract_plan with your final plan.";
     }
 
     /**

@@ -86,6 +86,11 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
             description = "Register compare_routes and evaluate_plan tools and advertise them in the system prompt.")
     private boolean enableComparisonTools;
 
+    @Option(names = {"--max-tool-iterations"},
+            description = "Max tool-calling rounds before the agent is forced to stop (default 10).",
+            defaultValue = "10")
+    private int maxToolIterations;
+
     @Option(names = {"--seed"},
             description = "MATSim global random seed. Controls which agents get picked for LLM replanning "
                     + "and mobsim stochasticity. Use distinct seeds for independent replicate runs.")
@@ -154,7 +159,7 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
 
         llmConfig.setNumberOfAIAgents(numAgents);
         llmConfig.setIterationToStartAIActivity(0);
-        llmConfig.setMaxToolIterations(10);
+        llmConfig.setMaxToolIterations(maxToolIterations);
 
         String outputDir = "./output/" + composeOutputDirName("siouxfalls", llmConfig, randomSeed);
         config.controller().setOutputDirectory(outputDir);
