@@ -181,11 +181,18 @@ conda run -n matsim-ai matsim-analyze analyze output/siouxfalls-llm-agents/
 conda run -n matsim-ai matsim-analyze reasoning output/siouxfalls-llm-agents/
 conda run -n matsim-ai matsim-analyze bottlenecks output/siouxfalls-llm-agents/
 conda run -n matsim-ai matsim-analyze tool-usage output/siouxfalls-llm-agents/
+conda run -n matsim-ai matsim-analyze persona output/siouxfalls-llm-agents/
 conda run -n matsim-ai matsim-analyze compare output/run-a/ output/run-b/
 ```
 
+The parsers handle both LLM wire formats (OpenAI-compat `choices[].message.reasoning`
+and Ollama-native `message.thinking`). Conversations without the legacy `You are
+person XXXX` marker (i.e. persona prompts) are keyed by a stable hash of the
+original-plan JSON; ground-truth person ids are in `llm_person_stats_combined.csv`.
+
 Key analysis modules (under `matsim-py-analysis/src/matsim_py_analysis/`):
-- `analysis/` — reasoning categorization, bottlenecks, run comparison
+- `analysis/` — reasoning categorization, bottlenecks, run comparison, persona signals
+- `analysis/persona.py` — persona emergence (first-person + trait grounding), degenerate repetition loops, persona↔tool contradictions (`matsim-analyze persona`)
 - `tool_usage/` — tool call/response extraction, hallucination & anomaly detection (see its README)
 - `conversations/` — human-readable chat transcripts; `matsim-analyze chat <out-dir>` (see its README)
 - `parsers/` — JSONL chat log + MATSim CSV readers

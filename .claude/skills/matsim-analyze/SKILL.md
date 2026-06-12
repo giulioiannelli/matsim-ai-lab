@@ -38,6 +38,8 @@ matsim-analyze analyze <output-dir>
 ```bash
 matsim-analyze reasoning <output-dir>      # reasoning categories, tool demand
 matsim-analyze bottlenecks <output-dir>    # failure classification, tool gap
+matsim-analyze tool-usage <output-dir>     # tool call/response patterns, anomalies
+matsim-analyze persona <output-dir>        # persona emergence, repetition loops, persona<->tool contradictions
 matsim-analyze compare <dir-a> <dir-b>     # A/B comparison of two runs
 ```
 

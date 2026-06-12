@@ -24,8 +24,17 @@ There is no runtime coupling — Python runs post-hoc on completed simulation ou
 conda run -n matsim-ai matsim-analyze analyze output/siouxfalls-llm-agents/
 conda run -n matsim-ai matsim-analyze reasoning output/siouxfalls-llm-agents/
 conda run -n matsim-ai matsim-analyze bottlenecks output/siouxfalls-llm-agents/
+conda run -n matsim-ai matsim-analyze tool-usage output/siouxfalls-llm-agents/
+conda run -n matsim-ai matsim-analyze persona output/siouxfalls-llm-agents/   # persona emergence, repetition loops, persona<->tool contradictions
 conda run -n matsim-ai matsim-analyze compare output/run-a/ output/run-b/
 ```
+
+All readers handle both LLM wire formats transparently: OpenAI-compatible
+(`choices[].message.reasoning`, string tool args) and Ollama-native
+(`message.thinking`, object tool args, no `tool_call_id` on tool messages).
+Conversations are keyed by the legacy `You are person XXXX` marker when present,
+else by a stable hash of the original-plan JSON (persona prompts omit the
+marker). Ground-truth MATSim person ids live in `llm_person_stats_combined.csv`.
 
 ## Submodule structure
 
