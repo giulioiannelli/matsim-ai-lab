@@ -1,0 +1,13 @@
+package gsonprocessor;
+
+import org.matsim.api.core.v01.population.Leg;
+import org.matsim.core.population.PopulationUtils;
+
+public class LegGson extends PlanElementGson {
+	public String mode;
+	public double distance;
+
+	public Leg getLeg() {
+		return PopulationUtils.createLeg(mode);
+	}
+}

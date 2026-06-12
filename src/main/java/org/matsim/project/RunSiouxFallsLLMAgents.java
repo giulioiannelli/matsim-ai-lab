@@ -86,6 +86,11 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
             description = "Register compare_routes and evaluate_plan tools and advertise them in the system prompt.")
     private boolean enableComparisonTools;
 
+    @Option(names = {"--seed"},
+            description = "MATSim global random seed. Controls which agents get picked for LLM replanning "
+                    + "and mobsim stochasticity. Use distinct seeds for independent replicate runs.")
+    private Long randomSeed;
+
     public static void main(String[] args) {
         int exit = new CommandLine(new RunSiouxFallsLLMAgents()).execute(args);
         System.exit(exit);
@@ -101,6 +106,9 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         config.controller().setLastIteration(iterations);
         config.controller().setWriteEventsInterval(iterations);
         config.controller().setWritePlansInterval(iterations);
+        if (randomSeed != null) {
+            config.global().setRandomSeed(randomSeed);
+        }
 
         LLMConfigGroup llmConfig = new LLMConfigGroup();
 
@@ -148,7 +156,7 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         llmConfig.setIterationToStartAIActivity(0);
         llmConfig.setMaxToolIterations(10);
 
-        String outputDir = "./output/" + composeOutputDirName("siouxfalls", llmConfig);
+        String outputDir = "./output/" + composeOutputDirName("siouxfalls", llmConfig, randomSeed);
         config.controller().setOutputDirectory(outputDir);
 
         config.addModule(llmConfig);
@@ -191,7 +199,7 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
      * LLM parameters plus any active feature flags.
      * Format: {@code <scenario>-<model>-T<temp>-N<maxtok>[-<flags>]} (filesystem-safe).
      */
-    private static String composeOutputDirName(String scenario, LLMConfigGroup cfg) {
+    private static String composeOutputDirName(String scenario, LLMConfigGroup cfg, Long seed) {
         StringBuilder sb = new StringBuilder(scenario);
         sb.append('-').append(cfg.getModelName().replace(':', '-').replace('/', '-'));
         sb.append("-T").append(cfg.getTemperature());
@@ -201,6 +209,7 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         if (cfg.isReasoningModel()) sb.append("-reasoning");
         if ("persona".equalsIgnoreCase(cfg.getPromptVariant())) sb.append("-persona");
         if (cfg.isComparisonToolsEnabled()) sb.append("-cmp");
+        if (seed != null) sb.append("-s").append(seed);
         return sb.toString();
     }
 }
