@@ -3,6 +3,8 @@ package tools.Implement;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Plan;
 
@@ -21,7 +23,9 @@ import tools.ToolArgumentDTO;
 import tools.VerificationFailedException;
 
 public class ExtractPlanTool implements ITool<Plan> {
-	
+
+	private static final Logger log = LogManager.getLogger(ExtractPlanTool.class);
+
 	public static final String Name = "extract_plan";
 
     private final Map<String, ToolArgument<?, ? extends ToolArgumentDTO<?>>> arguments = new HashMap<>();
@@ -96,6 +100,8 @@ public class ExtractPlanTool implements ITool<Plan> {
             verifyArguments(baseObjects, context, em);
             return callTool(toolCallId, baseObjects, vectorDB, context);
         } catch (Exception ex) {
+            log.warn("extract_plan could not build a plan from the LLM arguments; "
+                    + "falling back to the original plan. Cause: " + ex, ex);
             Plan fallback = originalPlanFromContext(context);
             if (fallback != null) {
                 return ok(toolCallId, fallback, "fallback_original:" + ex.getClass().getSimpleName());
