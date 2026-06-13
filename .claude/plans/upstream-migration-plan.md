@@ -6,6 +6,86 @@
 > fork, not upstream" guidance in the roadmap/diary — the collaborator has now
 > moved far ahead on `upstream`, and we *want* to adopt it.
 
+---
+
+## ▶ RESUME HERE — handoff (2026-06-13, mid-migration, post-context-compaction)
+
+**Read this first.** Migration is partway done; this is the single source of truth
+to continue. The rest of the doc is the analysis behind it.
+
+### Current state (verified green)
+- **Parent branch `migrate/contrib-llm`** (off `master`@`1337661`). `master` is
+  untouched and still works. Tag **`pre-migration-vendored`** = `1337661` = full
+  rollback point. Commits so far: `1f83db3` (plan), `e1a7418` (Phase 2 pom).
+- **Fork `matsim_llm_plugins/`** on branch **`lab`** = `upstream/main 7084f5c` + 2
+  commits: `dbb0a11` (accept free-form activity types — the blocker-B fix) and
+  `c9b936a` (thin-jar build config). `May2025`@`bebc622` kept as old-base marker.
+  Installed to `~/.m2` as `org.matsim.contrib:matsim-llm-plugins:0.1.0-SNAPSHOT`
+  (thin main jar 216K, full POM). **Reinstall after any `lab` edit:**
+  `./mvnw -f matsim_llm_plugins/matsim_llm_plugins/pom.xml -DskipTests install`
+- **Parent build:** `./mvnw -q compile` is **GREEN**. The vendored source AND the
+  new dependency coexist (different namespaces). Phase 2 pom: depends on the contrib,
+  excludes geotools from it, pins gson 2.13.1 / streamex 0.8.2 / error_prone 2.38.0.
+
+### Phase status: 0,1,2 DONE. Phase 3 IN PROGRESS (recon done, NO file surgery yet).
+
+### Phase 3 — exact next steps (recon already done, baked in below)
+Target parent layout: runners stay in `org.matsim.project[.gui]`; move OUR tools →
+`org.matsim.project.llm.tools[.comparison]`; PersonaPromptBuilder →
+`org.matsim.project.llm.prompts`. Delete everything the dependency now provides.
+
+1. **Move + repackage our keep-files** (`git mv` + change `package` line):
+   - `tools/Implement/comparison/{CompareRoutesTool,EvaluatePlanTool,PlanMetrics,RouteMetrics}.java`
+     → `org/matsim/project/llm/tools/comparison/` (pkg `org.matsim.project.llm.tools.comparison`)
+   - `tools/Implement/{AvailableModesTool,ActivityChainSummaryTool,ValidateTimingTool}.java`
+     + `tools/{ToolFilter,StagedToolFilter}.java` → `org/matsim/project/llm/tools/` (pkg `org.matsim.project.llm.tools`)
+   - `prompts/PersonaPromptBuilder.java` → `org/matsim/project/llm/prompts/` (pkg `org.matsim.project.llm.prompts`)
+2. **Rewrite imports** in the moved files + runners (the recon list):
+   - framework: `tools.{ITool,IToolResponse,DefaultToolResponse,ErrorMessages,SimpleStringDTO,SimpleDoubleDTO,ToolArgument,ToolArgumentDTO,VerificationFailedException,IToolManager,DefaultToolManager,IToolCall}` → `org.matsim.contrib.llm.tools.*`
+   - `matsimdtobjects.*`→`org.matsim.contrib.llm.matsimdtobjects.*`; `rag.*`→`…rag.*`;
+     `chatcommons.*`/`chatrequest.*`/`chatresponse.*`→`org.matsim.contrib.llm.<same>.*`;
+     `matsimBinding.{LLMConfigGroup,LLMIntegrationModule,LLMReplanningStrategyModule}`→`…matsimBinding.*`;
+     `prompts.IndividualPrompt`→`…prompts.IndividualPrompt`.
+   - OUR refs: `prompts.PersonaPromptBuilder`→`org.matsim.project.llm.prompts.PersonaPromptBuilder`;
+     `tools.ToolFilter`/`tools.StagedToolFilter`→`org.matsim.project.llm.tools.*`.
+   - ⚠️ Do NOT blanket-`sed import tools.` → it would wrongly rewrite our ToolFilter/StagedToolFilter. Rewrite specific framework class names only.
+3. **Delete vendored framework** (now from the dep): `src/main/java/{chatcommons,chatrequest,chatresponse,gsonprocessor,matsimBinding,matsimdtobjects,rag,run}`, the framework files in `tools/` (ITool, DefaultToolManager, IToolManager, ExternalValidator, the DTO classes, `tools/Implement/{ExtractPlanTool,RouterTool,PullAdditionalContextTool}`), and vendored `prompts/IndividualPrompt.java`.
+4. **Delete dead code** + remove their `pom.xml` `<excludes>` block:
+   `org/matsim/project/llm/{CreatePlanTool,LLMReplanningListener,LLMReplanningModule}.java`,
+   `org/matsim/project/{RunMatsimWithLLM,RunSiouxFallsWithLLM,TestLLMConnection}.java`.
+5. **DROP redundancies in runners** (use his config, not our deleted classes):
+   - `matsimBinding.profile.{ModelProfile,ModelProfileApplier}` → direct
+     `config.setTemperature/setMaxTokens/setSeed/setMaxToolIterations/setNumberOfAIAgents(...)`
+     (all exist in his `LLMConfigGroup`).
+   - `gsonprocessor.PlanGson` (2 refs) — find the runner; if dead (deleted in step 4)
+     ignore, else replace with `matsimdtobjects.PlanDTO`.
+   - `matsimBinding.LLMConfigGroup.BackendType` → his `BackendType.LM_STUDIO`.
+6. **Blocker A:** check his `org.matsim.contrib.llm.matsimBinding.LLMReplanningStrategyModule`
+   for `StrategyName` / `LLM_SUBPOPULATION` / subpop assignment. The runner uses
+   `LLMReplanningStrategyModule.{StrategyName, LLM_SUBPOPULATION}` +
+   `mirrorDefaultScoringToSubpopulation`. If his module lacks them, add a small `lab`
+   patch (the two constants + `putSubpopulation(person, LLM_SUBPOPULATION)`),
+   reinstall. Keep `BlockerASubpopConfigTest`.
+7. **Compile-fix loop:** `./mvnw -q compile`; fix residuals; repeat to green.
+
+### After Phase 3 (Phases 4–6)
+- **Personas (Milestone B):** add a `SystemPromptProvider` seam on `lab` (his module
+  ~L397 hardcodes `IndividualPrompt.chatGPTSystemPrompt`); bind `PersonaPromptBuilder`
+  in the parent runner; reinstall.
+- **num_ctx:** Ollama Modelfile (`PARAMETER num_ctx 8192`, point `modelName` at it);
+  probe OpenAI-endpoint passthrough first.
+- **Verify:** `./mvnw test` + curl probes; then one gated multi-seed smoke; confirm no
+  regression vs `pre-migration-vendored`.
+- **Land:** merge `migrate/contrib-llm`→`master`; update CLAUDE.md (namespace,
+  build=dependency, run cmds), roadmap (drop "never pull upstream"), MEMORY.md, diary;
+  PR the two `lab` fixes upstream.
+
+### Rollback
+Parent `git checkout master` + fork `git checkout May2025` restores the pre-migration
+world entirely. `~/.m2` install is harmless to leave.
+
+---
+
 ## TL;DR (the reframe)
 
 - **There is no git "fast-forward" that carries our work onto the new infra.** Our
