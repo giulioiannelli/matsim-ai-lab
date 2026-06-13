@@ -91,7 +91,14 @@
 			<dependency>
 				<groupId>com.google.errorprone</groupId>
 				<artifactId>error_prone_annotations</artifactId>
-				<version>2.36.0</version>
+				<version>2.38.0</version>
+			</dependency>
+			<!-- MATSim contribs (dvrp/ev/common) use streamex 0.8.2; the plugin pulls
+			     0.7.3. Pin to 0.8.2 to satisfy the upper-bound enforcer. -->
+			<dependency>
+				<groupId>one.util</groupId>
+				<artifactId>streamex</artifactId>
+				<version>0.8.2</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
@@ -207,6 +214,35 @@
 
 		<!--Dependencies from where stated above to here are added as a service; they can be removed if you don't need them-->
 
+		<!-- The LLM plugin, consumed as a library (built from ./matsim_llm_plugins
+		     on the lab branch via `mvn install`). -->
+		<dependency>
+			<groupId>org.matsim.contrib</groupId>
+			<artifactId>matsim-llm-plugins</artifactId>
+			<version>0.1.0-SNAPSHOT</version>
+			<!-- The plugin pins geotools 34.3; the parent's MATSim uses 31.3, and the
+			     plugin does not use geotools directly. Drop the plugin's geotools so
+			     MATSim's 31.3 serves the whole build (satisfies the enforcer). -->
+			<exclusions>
+				<exclusion>
+					<groupId>org.geotools</groupId>
+					<artifactId>*</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.geotools.xsd</groupId>
+					<artifactId>*</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.geotools.jdbc</groupId>
+					<artifactId>*</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.geotools.ogc</groupId>
+					<artifactId>*</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
 		<!-- LLM Plugin Dependencies -->
 		<dependency>
 			<groupId>com.squareup.okhttp3</groupId>
@@ -216,7 +252,7 @@
 		<dependency>
 			<groupId>com.google.code.gson</groupId>
 			<artifactId>gson</artifactId>
-			<version>2.11.0</version>
+			<version>2.13.1</version>
 		</dependency>
 		<!-- Qdrant vector DB (replaced ChromaDB) -->
 		<dependency>
