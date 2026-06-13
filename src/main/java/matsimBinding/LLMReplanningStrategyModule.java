@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 
 import org.apache.logging.log4j.LogManager;
@@ -21,7 +20,6 @@ import org.matsim.api.core.v01.replanning.PlanStrategyModule;
 import org.matsim.core.controler.MatsimServices;
 import org.matsim.core.controler.events.StartupEvent;
 import org.matsim.core.controler.listener.StartupListener;
-import org.matsim.core.gbl.MatsimRandom;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.replanning.ReplanningContext;
 import org.matsim.core.router.TripRouter;
@@ -53,6 +51,17 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 
 	public static final String StrategyName = "LLMPlanner";
 
+	/**
+	 * Subpopulation that AI agents are placed in so the LLM strategy is the only
+	 * one assigned to them. Without this they share the weighted strategy lottery
+	 * with the whole population, so only a fraction of the selected agents land in
+	 * the LLM strategy each iteration (the rest get re-routed / re-selected by the
+	 * default strategies and are never queried). The runner must register the
+	 * {@link #StrategyName} strategy for this subpopulation and give it matching
+	 * scoring parameters.
+	 */
+	public static final String LLM_SUBPOPULATION = "llm";
+
 	@Inject
 	LLMConfigGroup llmConfig;
 
@@ -78,8 +87,6 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 	private Provider<TripRouter> tripRouterProvider;
 
 	private Gson gson = new GsonBuilder().setPrettyPrinting().create();
-
-	private int numberOfLLMAgent = 0;
 
 	protected static final Logger log = LogManager.getLogger(LLMReplanningStrategyModule.class);
 
@@ -415,46 +422,61 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 	    return out;
 	}
 
-	@Override
-	public void notifyStartup(StartupEvent event) {
-		int aiAgents = this.llmConfig.getNumberOfAIAgents();
-		if(aiAgents<0) {
-			this.numberOfLLMAgent = this.scenario.getPopulation().getPersons().size();
-		}else {
-			this.numberOfLLMAgent = aiAgents;
-		}
-		this.contextObject.put("tripRoutersProvider", this.tripRouterProvider);
-		this.contextObject.put("activityFacilities", scenario.getActivityFacilities());
-		// Collect eligible agents (selected plan has more than 3 elements, i.e. a
-		// real multi-trip day).
+	/**
+	 * Tags exactly N eligible agents as AI and assigns a subpopulation to the
+	 * WHOLE population. Must be called BEFORE the controler is built: core
+	 * subpopulation-aware listeners (ScoreStats, scoring) snapshot the
+	 * population's subpopulations when they initialise at startup, so the
+	 * assignment has to be in place first — doing it in {@link #notifyStartup}
+	 * is too late and crashes ScoreStats. Non-AI agents go to the default
+	 * subpopulation; AI agents go to the LLM subpopulation so the LLM strategy
+	 * is the only one assigned to them (every iteration).
+	 *
+	 * <p>Eligible = a real multi-trip day (selected plan has more than 3
+	 * elements). Selection is a seed-shuffled pick so it is reproducible per
+	 * seed and varies across seeds.
+	 *
+	 * @return ids of the selected AI agents
+	 */
+	public static List<Id<Person>> assignAISubpopulations(Scenario scenario, int numberOfAIAgents, long seed) {
 		List<Person> eligible = new ArrayList<>();
-		for(Entry<Id<Person>, ? extends Person> p:this.scenario.getPopulation().getPersons().entrySet()){
-			if(p.getValue().getSelectedPlan().getPlanElements().size()<=3) {
-				continue;
+		for(Person p : scenario.getPopulation().getPersons().values()){
+			PopulationUtils.putSubpopulation(p, org.matsim.core.config.groups.ScoringConfigGroup.DEFAULT_SUBPOPULATION);
+			if(p.getSelectedPlan().getPlanElements().size() > 3) {
+				eligible.add(p);
 			}
-			eligible.add(p.getValue());
 		}
-		// Pick exactly N distinct agents. Shuffle seeded from the MATSim random so the
-		// choice is reproducible per seed and varies across seeds, rather than an
-		// independent per-person probability that yields a random 0/1/2 count.
-		java.util.Collections.shuffle(eligible, new java.util.Random(MatsimRandom.getLocalInstance().nextLong()));
-		int target = Math.min(numberOfLLMAgent, eligible.size());
-		int totalLLMAgent = 0;
+		java.util.Collections.shuffle(eligible, new java.util.Random(seed));
+		int target = numberOfAIAgents < 0 ? eligible.size() : Math.min(numberOfAIAgents, eligible.size());
+		List<Id<Person>> selected = new ArrayList<>();
 		for(int idx = 0; idx < target; idx++){
 			Person person = eligible.get(idx);
+			person.getAttributes().putAttribute("isAI", true);
+			PopulationUtils.putSubpopulation(person, LLM_SUBPOPULATION);
+			selected.add(person.getId());
+		}
+		return selected;
+	}
+
+	@Override
+	public void notifyStartup(StartupEvent event) {
+		this.contextObject.put("tripRoutersProvider", this.tripRouterProvider);
+		this.contextObject.put("activityFacilities", scenario.getActivityFacilities());
+		// Agents were tagged (isAI + subpopulation) before the controler started,
+		// in assignAISubpopulations. Here we only build a chat manager for each
+		// tagged agent.
+		int totalLLMAgent = 0;
+		for(Person person : this.scenario.getPopulation().getPersons().values()){
+			if(!Boolean.TRUE.equals(person.getAttributes().getAttribute("isAI"))) {
+				continue;
+			}
 			this.LLMAgentsId.add(person.getId());
-			String context = LLMControllerListener.extract(person).ragText;
-			Map<String,String> metaData = new HashMap<>();
-			metaData.put("personId", person.getId().toString());
-			metaData.put("type", "attribute");
-			//this.vectorDB.insert(context,metaData);//inserted in agent experience handler
 			DefaultChatManager chatManager = new DefaultChatManager(Id.create(person.getId().toString(), IChatManager.class), chatClient, toolManager, vectorDB, this.llmConfig);
 			chatManager.setSystemMessage(buildSystemMessageForVariant(
 					llmConfig.getPromptVariant(),
 					person,
 					llmConfig.isComparisonToolsEnabled()));
 			chatManager.setPersonId(person.getId());
-			person.getAttributes().putAttribute("isAI", true);
 			chatManager.setContextObject(new HashMap<>(this.contextObject));
 			chatManager.getContextObject().put("person",person);
 

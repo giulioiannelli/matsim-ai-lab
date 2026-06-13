@@ -166,13 +166,36 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
 
         config.addModule(llmConfig);
 
+        // AI agents live in their own subpopulation whose only strategy is the
+        // LLM planner, so every selected agent is queried each iteration instead
+        // of competing in the whole-population strategy lottery. The default
+        // strategies (loaded from the scenario config) stay on the default
+        // subpopulation for everyone else. The new subpopulation needs its own
+        // scoring parameters, so mirror the default ones onto it.
+        mirrorDefaultScoringToSubpopulation(config, LLMReplanningStrategyModule.LLM_SUBPOPULATION);
+        // The scenario's strategies are registered under the null default
+        // subpopulation. Non-AI agents now sit in the explicit "default"
+        // subpopulation, so re-key those strategies to match; otherwise they
+        // would have no strategy and never replan.
+        for (org.matsim.core.config.groups.ReplanningConfigGroup.StrategySettings ss
+                : config.replanning().getStrategySettings()) {
+            if (ss.getSubpopulation() == null) {
+                ss.setSubpopulation(org.matsim.core.config.groups.ScoringConfigGroup.DEFAULT_SUBPOPULATION);
+            }
+        }
         config.replanning().addStrategySettings(
             new org.matsim.core.config.groups.ReplanningConfigGroup.StrategySettings()
                 .setStrategyName(LLMReplanningStrategyModule.StrategyName)
                 .setWeight(1.0)
+                .setSubpopulation(LLMReplanningStrategyModule.LLM_SUBPOPULATION)
         );
 
         Scenario scenario = ScenarioUtils.loadScenario(config);
+        // Tag AI agents and assign subpopulations BEFORE building the controler, so
+        // subpopulation-aware core listeners (ScoreStats, scoring) see the final
+        // subpopulations when they initialise at startup.
+        LLMReplanningStrategyModule.assignAISubpopulations(
+                scenario, numAgents, config.global().getRandomSeed());
         Controler controler = new Controler(scenario);
         controler.addOverridingModule(new SimWrapperModule());
         controler.addOverridingModule(new LLMIntegrationModule(
@@ -216,5 +239,59 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         if (cfg.isComparisonToolsEnabled()) sb.append("-cmp");
         if (seed != null) sb.append("-s").append(seed);
         return sb.toString();
+    }
+
+    /**
+     * Copies the default subpopulation's scoring parameters onto {@code subpop}
+     * so agents placed there (the AI agents) are scored identically to everyone
+     * else. MATSim resolves scoring parameters by subpopulation; without a set
+     * for {@code subpop} those agents would have no scoring function. The copy is
+     * generic (it mirrors whatever scalar/activity/mode params the scenario
+     * defines) so it stays correct if the scenario's scoring changes.
+     */
+    static void mirrorDefaultScoringToSubpopulation(Config config, String subpop) {
+        org.matsim.core.config.groups.ScoringConfigGroup scoring = config.scoring();
+        // The scenario's default scoring lives under the null subpopulation, which
+        // non-AI agents (no subpopulation attribute -> getSubpopulation()==null)
+        // resolve to. The sole existing set is that default.
+        org.matsim.core.config.groups.ScoringConfigGroup.ScoringParameterSet src =
+                scoring.getScoringParametersPerSubpopulation().values().iterator().next();
+
+        // getScoringParameters falls back to the null-keyed default for ANY unknown
+        // subpopulation, so getOrCreateScoringParameters(x) would find the default
+        // via that fallback and *remove* it. Detach the default while creating the
+        // new sets, then restore it. We create two copies: one under the explicit
+        // DEFAULT_SUBPOPULATION (MATSim requires it once several subpopulations
+        // exist) and one under our AI subpopulation. The null default stays for
+        // the non-AI agents.
+        scoring.removeParameterSet(src);
+        org.matsim.core.config.groups.ScoringConfigGroup.ScoringParameterSet def =
+                scoring.getOrCreateScoringParameters(
+                        org.matsim.core.config.groups.ScoringConfigGroup.DEFAULT_SUBPOPULATION);
+        org.matsim.core.config.groups.ScoringConfigGroup.ScoringParameterSet dst =
+                scoring.getOrCreateScoringParameters(subpop);
+        scoring.addParameterSet(src);
+
+        copyScoringParams(src, def);
+        copyScoringParams(src, dst);
+    }
+
+    /** Deep-copy scalar, per-activity and per-mode params from one scoring set to another. */
+    private static void copyScoringParams(
+            org.matsim.core.config.groups.ScoringConfigGroup.ScoringParameterSet src,
+            org.matsim.core.config.groups.ScoringConfigGroup.ScoringParameterSet dst) {
+        src.getParams().forEach((k, v) -> {
+            if (!"subpopulation".equals(k)) dst.addParam(k, v);
+        });
+        for (org.matsim.core.config.groups.ScoringConfigGroup.ActivityParams ap : src.getActivityParams()) {
+            org.matsim.core.config.groups.ScoringConfigGroup.ActivityParams cp =
+                    dst.getOrCreateActivityParams(ap.getActivityType());
+            ap.getParams().forEach(cp::addParam);
+        }
+        for (org.matsim.core.config.groups.ScoringConfigGroup.ModeParams mp : src.getModes().values()) {
+            org.matsim.core.config.groups.ScoringConfigGroup.ModeParams cp =
+                    dst.getOrCreateModeParams(mp.getMode());
+            mp.getParams().forEach(cp::addParam);
+        }
     }
 }
