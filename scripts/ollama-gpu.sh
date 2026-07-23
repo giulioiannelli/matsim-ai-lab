@@ -24,8 +24,12 @@ case "${1:-status}" in
         if [[ -z "$names" ]]; then echo "Nothing to evict."; exit 0; fi
         for name in $names; do
             echo "Evicting $name ..."
+            # generate endpoint unloads chat models; embed endpoint is needed
+            # for embedding-only models (generate rejects them).
             curl -sf --max-time 30 "$OLLAMA_URL/api/generate" \
-                -d "{\"model\":\"$name\",\"keep_alive\":0}" > /dev/null
+                -d "{\"model\":\"$name\",\"keep_alive\":0}" > /dev/null \
+            || curl -sf --max-time 30 "$OLLAMA_URL/api/embed" \
+                -d "{\"model\":\"$name\",\"input\":\"x\",\"keep_alive\":0}" > /dev/null
         done
         echo "Done. Remaining:"
         loaded_models || true

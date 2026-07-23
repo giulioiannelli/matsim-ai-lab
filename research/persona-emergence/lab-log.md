@@ -23,6 +23,14 @@ data. Session-level operational logs stay in `.claude/diary/`.
 iterations, persona + comparison tools, cap 10, qwen3.6:27b. Early-stop at
 <60% success between seeds; GPUs evicted after each seed. Expected 4–10 h.
 
+**ABORTED mid-seed-1 by PI decision**: 4–10 h wall time is unacceptable as a
+working rhythm. Seed 4711 partial output is void (do not analyze). **Pivot:
+speed becomes the gate for everything** — WS-A2 (parallel agents) + A1
+(thinking reduction) + model right-sizing move BEFORE the rebaseline; the
+rebaseline reruns only once an iteration-scale run fits in tens of minutes.
+Timing decomposition backs this: generation is 91% of wall time, 68% of
+tokens are thinking, and the 27B pays a permanent ~1 GB CPU-offload tax.
+
 ## 2026-07-23 — Campaign start: remote 27B online, first persona signals
 
 **Setup**: LLM inference moved to mari.dinfo.unifi.it (qwen3.6:27b, SSH tunnel,
