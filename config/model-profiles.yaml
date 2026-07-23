@@ -56,6 +56,17 @@ profiles:
     thinkingTokenCap: 2048
     endpointStyle: ollama_native
 
+  # Tiny variant — used for remote-endpoint plumbing tests; same family
+  # behaviour (thinking + native endpoint), not expected to plan well.
+  "qwen3.5:0.8b":
+    maxTokens: 4096
+    contextWindow: 8192
+    temperature: 0.3
+    enableThinking: true
+    isReasoning: true
+    thinkingTokenCap: 2048
+    endpointStyle: ollama_native
+
   "qwen3.5:latest":
     maxTokens: 4096
     contextWindow: 8192
@@ -63,6 +74,19 @@ profiles:
     enableThinking: true
     isReasoning: true
     thinkingTokenCap: 2048
+    endpointStyle: ollama_native
+
+  # Remote (mari) large model. Combined VRAM there is ~18-19 GB and the Q4
+  # weights alone are 16.5 GB, so large contexts spill KV cache to CPU.
+  # Probe-validated on mari 2026-07-23: ctx 12288 → 1.0 GB spill (same as
+  # ctx 4096), 21.6 tok/s generation. Larger contexts unmeasured.
+  "qwen3.6:27b":
+    maxTokens: 6144
+    contextWindow: 12288
+    temperature: 0.3
+    enableThinking: true
+    isReasoning: true
+    thinkingTokenCap: 3072
     endpointStyle: ollama_native
 
   "qwen3:14b":

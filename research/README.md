@@ -24,6 +24,7 @@ Active threads exploring where this project is going.
 
 | Thread | Focus |
 |--------|-------|
+| [**Persona Emergence Campaign**](persona-emergence/) | **⭐ ACTIVE PHASE (2026-07-23→)** — remote 27B era: preregistered persona-emergence metrics + 4-lever speed program (reasoning budget, parallelism, persona memory, two-tier); paper intended. Plan, lab log, run registry. |
 | [Meaningful Reasoning Plan](directions/meaningful-reasoning-plan.md) | **Active** — move from mechanical template-filling to substantive reasoning via comparison tools, self-questioning prompts, persona memory, and reasoning models within 16 GB VRAM |
 | [Agent Replanning Quality](directions/agent-replanning.md) | Prompt design, tool accuracy, plan quality metrics |
 | [Agent Reasoning Analysis](directions/agent-reasoning-analysis.md) | NLP on reasoning traces, sentiment, decision patterns |

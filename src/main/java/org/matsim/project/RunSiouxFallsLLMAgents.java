@@ -96,6 +96,11 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
                     + "and mobsim stochasticity. Use distinct seeds for independent replicate runs.")
     private Long randomSeed;
 
+    @Option(names = {"--embedding-model"},
+            description = "Embedding model name on the LLM server (for the Qdrant RAG store).",
+            defaultValue = "qwen3-embedding:0.6b")
+    private String embeddingModel;
+
     public static void main(String[] args) {
         int exit = new CommandLine(new RunSiouxFallsLLMAgents()).execute(args);
         System.exit(exit);
@@ -150,19 +155,23 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
 
         // Ollama embedding endpoint for RAG.
         llmConfig.setEmbeddingPath("/v1/embeddings");
-        llmConfig.setEmbeddingModelName("nomic-embed-text");
-
-        llmConfig.setVectorDbHost("localhost");
-        llmConfig.setVectorDbPort(6334);
-        llmConfig.setVectorDbCollectionName("matsim_siouxfalls_llm");
-        llmConfig.setCleanVectorDbUponCompletion("ALL");
+        llmConfig.setEmbeddingModelName(embeddingModel);
 
         llmConfig.setNumberOfAIAgents(numAgents);
         llmConfig.setIterationToStartAIActivity(0);
         llmConfig.setMaxToolIterations(maxToolIterations);
 
-        String outputDir = "./output/" + composeOutputDirName("siouxfalls", llmConfig, randomSeed);
+        String runName = composeOutputDirName("siouxfalls", llmConfig, randomSeed);
+        String outputDir = "./output/" + runName;
         config.controller().setOutputDirectory(outputDir);
+
+        llmConfig.setVectorDbHost("localhost");
+        llmConfig.setVectorDbPort(6334);
+        // One collection per run: experience docs must never leak between runs
+        // (replanning mode has no cleanup hook, and shared collections would
+        // contaminate multi-seed replicates).
+        llmConfig.setVectorDbCollectionName("matsim_" + runName.replaceAll("[^A-Za-z0-9_-]", "_"));
+        llmConfig.setCleanVectorDbUponCompletion("ALL");
 
         config.addModule(llmConfig);
 

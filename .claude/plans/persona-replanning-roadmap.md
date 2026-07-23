@@ -9,6 +9,13 @@
 > plan (`glowing-leaping-dragon.md`, global, randomly named) was lost. Last
 > actual work on the project: 2026-04-21 (Phase 4 close-out).
 
+> **2026-07-23 update:** the "small, locally-runnable models" constraint below
+> is lifted — inference now runs on a remote GPU server (qwen3.6:27b on mari,
+> SSH tunnel, no code changes). The active phase plan (metrics, speed program,
+> persona memory, paper track) is **`research/persona-emergence/README.md`**;
+> this file remains the historical master record. Part C's persona-memory item
+> is promoted into that campaign (WS-A3).
+
 ## North star
 
 Build MATSim travel agents that **replan according to a persona**, and a

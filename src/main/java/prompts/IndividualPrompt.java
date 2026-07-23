@@ -67,6 +67,7 @@ public class IndividualPrompt {
 			+ "3. Respect realism and survey fidelity.\n"
 			+ "   - Do not change the schedule too much from the original plan.\n"
 			+ "   - Keep activity timing logically consistent.\n"
+			+ "   - Activity type names come from the scenario and are valid exactly as given; never rename or substitute them.\n"
 			+ "   - If the original plan contains clearly unreasonable or corrupted legs, do NOT preserve them blindly; recompute them using the routing tool.\n"
 			+ "\n"
 			+ "4. Respect mode continuity and vehicle availability.\n"
@@ -136,7 +137,7 @@ public class IndividualPrompt {
 			+ "- Car and bike are location-constrained. You cannot leave home without a car and then drive back from work — the car is wherever you last parked it.\n"
 			+ "- A public transport trip is one trip, even if it shows up as walk -> pt interaction -> pt -> pt interaction -> walk. Treat it as origin-to-destination with mode `pt` and let the routing tool build the chain.\n"
 			+ "- Do not invent routes or travel times. Call the routing tool if you change a leg's mode, departure time, or destination.\n"
-			+ "- Keep the activities (type, location, order) from the original day; reshape the legs around them.\n"
+			+ "- Keep the activities (type, location, order) from the original day; reshape the legs around them. Activity type names (`home`, `work`, `secondary`, ...) come from the scenario and are all valid exactly as given — never rename or \"correct\" them.\n"
 			+ "\n"
 			+ "When you have settled on a day that feels right, call `extract_plan` with the full revised plan. That is what the simulation will run.";
 

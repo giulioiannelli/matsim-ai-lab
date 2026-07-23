@@ -46,7 +46,7 @@ matsim-ai-lab/
 ### Prerequisites
 
 - Java 21+
-- Ollama running locally with models pulled: `ollama pull qwen3.5` and `ollama pull nomic-embed-text`
+- An Ollama endpoint at `localhost:11434` with a chat model and the embedding model (`qwen3-embedding:0.6b`, runner default) pulled. Either local Ollama, or (current setup) the remote GPU server via SSH tunnel — recipe in `.claude/diary/2026-07-23.md`; keep remote GPUs clean with `scripts/ollama-gpu.sh [status|evict]`
 - Qdrant vector DB: `sudo docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant`
 
 ## Architecture
@@ -217,11 +217,11 @@ Reference implementation: `RouterTool.java` (real tool), `ExtractPlanTool.java` 
 
 | Tool | Purpose | Priority | Status |
 |------|---------|----------|--------|
-| `available_modes` | Pre-compute which modes person can use at each location | HIGH | Planned |
-| `activity_chain_summary` | Simplified plan view without PT chain noise | HIGH | Planned |
-| `validate_timing` | Check temporal consistency before extract_plan | MEDIUM | Planned |
-| `persona_memory` | Read accumulated behavioral patterns from Qdrant | MEDIUM | Planned |
-| `update_persona_memory` | Write back persona after planning (dummy) | MEDIUM | Planned |
+| `available_modes` | Pre-compute which modes person can use at each location | HIGH | **Done** (registered) |
+| `activity_chain_summary` | Simplified plan view without PT chain noise | HIGH | **Done** (registered) |
+| `validate_timing` | Check temporal consistency before extract_plan | MEDIUM | **Done** (registered) |
+| `persona_memory` | Read accumulated behavioral patterns from Qdrant | HIGH | Planned — campaign WS-A3 (`research/persona-emergence/`) |
+| `update_persona_memory` | Write back persona after planning (dummy) | HIGH | Planned — campaign WS-A3 (`research/persona-emergence/`) |
 
 ## Project goals / research direction
 
