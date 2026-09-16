@@ -157,6 +157,8 @@ Ordered by cost; each step gates on "metrics not regressed" (multi-seed).
 
 ## Folder map
 
+- `evaluation-checkpoints.md` — pipeline panorama, output map, visualisation, checkpoints & controls for judging LLM replanning.
+
 - `README.md` — this plan (update statuses in place).
 - `lab-log.md` — dated scientific log: what was run, what was learned.
 - `runs.md` — run registry (one row per simulation, no exceptions).

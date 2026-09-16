@@ -78,7 +78,20 @@ public class ActivityDTO extends PlanElementDTO<Activity> {
             act.setEndTime(endTime);
         }
 
+        // Stage activities ("pt interaction", "car interaction", ...) are created by the
+        // MATSim router with a zero maximum duration. A round-tripped plan must restore
+        // it: an interaction activity with neither end time nor maximum duration never
+        // ends in the mobsim, and the agent spends the rest of the day at the stop.
+        if (isStageActivityType(type) && endTime == null) {
+            act.setMaximumDuration(0.0);
+        }
+
         return act;
+    }
+
+    /** True for MATSim stage activities, i.e. types ending in " interaction". */
+    public static boolean isStageActivityType(String type) {
+        return type != null && type.trim().endsWith(" interaction");
     }
 
     @Override

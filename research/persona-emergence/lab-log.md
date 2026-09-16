@@ -5,6 +5,50 @@ data. Session-level operational logs stay in `.claude/diary/`.
 
 ---
 
+## 2026-09-16 (evening) — First 3×3 on the fast 27B: clean protocol, two ugly truths
+
+**Run**: 3 agents × 3 LLM iterations, seed 4721, 27B + gpuLayers + local
+embedder (registered). Protocol/persona checkpoints all green: 9/9 plans
+applied, 66 tool calls with 0 hallucinated names / 0 bad args, persona voice
++ trait grounding in 9/9 conversations, no loops, no contradictions.
+Per-agent 2.3–6.7 min; iteration 3 replanning took 24 min vs 12 for
+iteration 2 (mari contention).
+
+**Ugly truth 1 — a legal-looking plan that freezes the agent.** Two
+commuters (27F and 62M, employed, car always) were switched car → walk/pt/walk
+for both commute legs, copied verbatim from `router_tool`'s output. In the
+mobsim each left home, walked to the stop, started `pt interaction` — and
+never moved again (events: 1 departure, 1 arrival, 1 actstart, nothing else).
+Their executed score "improved" from −44/−37 to +5.8/+5.1 because an
+unperformed work activity is not penalised while the stuck car trip was, and
+ExpBeta then kept that plan. **Cause**: `ActivityDTO.toBaseClass` restored
+stage activities with neither end time nor maximum duration; MATSim's router
+gives them `maximumDuration = 0`. **Fix**: interaction-type activities now get
+`maximumDuration 0` when no end time is given (`ActivityDTO.isStageActivityType`);
+unit test `ActivityDTOStageActivityTest`. Lesson for the guide: the score is
+not a safe ground truth on its own — trips/events (checkpoint 4) caught this.
+
+**Ugly truth 2 — the ground is gridlocked.** Full-scale Sioux Falls (84,110
+agents, flowCapacityFactor 1.0, stuckTime 3600 s, strategies at 1 % each,
+`lastIteration 3000` in the example config): at it.0 only 15.6k of 83.0k car
+departures arrive; 67.3k cars are still en route at the 30:00 end and get
+`stuckAndAbort` (75.8k stuck agents incl. 8.5k pt riders whose buses sit in
+the same jam). The old 10-iteration run still had 71k stuck at it.10. Every
+LLM experiment so far — laptop era included — ran on this ground. Score
+comparisons llm-vs-default in the first tens of iterations are therefore
+meaningless; the third agent (63M retired) "deliberately kept" its car plan
+three times and was stuck every day, exactly like the rule-based majority.
+
+**Decision needed**: evaluate on a healthy ground. Options: (a) rule-based
+warm-up (mobsim is only ~13 s/iteration; with boosted ReRoute/mode-choice
+weights a few hundred iterations ≈ 1–2 h) and start LLM runs from the warmed
+`output_plans.xml.gz` (runner needs a `--plans-file` option); (b) a 10–25 %
+population sample with matching capacity factors (seconds per iteration, warm
+up in minutes), which is the usual MATSim practice for method development.
+Either way the LLM subpopulation also needs a re-route fallback or the
+router tool in the prompt's default path, otherwise a kept plan keeps its
+jammed route forever.
+
 ## 2026-09-16 — Resume after pivot: 27B does not fit mari; right-sizing forced
 
 **Setup**: `ai-matsim-start` now opens the mari tunnel itself (diary
