@@ -4,7 +4,9 @@
 > fast 27B exposed (a) a frozen-stage-activity bug (fixed) and (b) that
 > full-scale Sioux Falls is gridlocked from iteration 0 (75.8k/84.1k agents
 > stuck). Supersedes the "AI-only subpopulation" design for evaluation runs.
-> Status: **PROPOSED — awaiting PI sign-off before code.**
+> Status: **ACCEPTED 2026-09-16 with defaults** (panel 200, trigger = bottom
+> 20 % score drop, dev sample 10 %, archetype transfer deferred). WP1 in
+> progress: see "Progress" at the end.
 
 ## Research question for this phase
 
@@ -52,9 +54,11 @@ persona-memory speed-ups come after, on the same infrastructure.
 
 ## Work packages (in order; each ends with a registered run)
 
-- **WP1 warm-up runner**: `RunSiouxFalls` gains `--innovation-boost`,
-  `--disable-innovation-after`, `--sample` (population fraction + capacity
-  factors), writes warmed plans. Runners gain `--plans-file`.
+- **WP1 warm-up runner** ✅ code: `RunSiouxFalls` is picocli with
+  `--innovation-boost`, `--boost-until`, `--disable-innovation-after`;
+  `org.matsim.project.ground.GroundOptions` mixin (`--plans-file`, `--sample`,
+  `--capacity-factor`) shared with `RunSiouxFallsLLMAgents`;
+  `InnovationBoost` restores weights via MATSim change requests.
 - **WP2 LLM strategy refactor**: LLM strategy registered for the default
   subpopulation with weight + `maxQueriesPerIteration` + trigger rule in
   `LLMConfigGroup`; panel selection by seed; AI-only subpopulation kept as an
@@ -65,9 +69,18 @@ persona-memory speed-ups come after, on the same infrastructure.
   `matsim-analyze` (`ground-health` command; per-agent decision table across
   iterations); control A/B scripts.
 
-## Open questions for the PI
+## Decisions (PI, 2026-09-16: "go with the defaults")
 
-- Panel size and trigger thresholds (score-drop quantile?).
-- Sample fraction for the dev loop (10 % vs 25 %).
-- Whether the archetype-transfer idea (one decision applied to a cluster)
-  belongs in this phase or the next.
+- Panel: 200 agents, seeded. Trigger: executed-score drop in the bottom 20 %
+  of the panel (plus stuck/late and never-reviewed).
+- Dev loop sample: 10 % (8,460 agents, capacity 0.1 / storage 0.1^0.75).
+- Archetype transfer: deferred to the next phase.
+
+## Progress
+
+- 2026-09-16 WP1: code + 8 unit tests; first warm-up `siouxfalls-s0.10-b10-seed4711`
+  (100 it., boost x10 until 50) — result in `research/persona-emergence/runs.md`.
+- 2026-09-16 WP2: `matsimBinding.panel` + runner `--panel`; smoke
+  `…-c0.10-warm-…-s4721-panel20q3` (4 it., panel 20, budget 3): 11/12 applied,
+  0 tool failures, median 375 s/agent. `scripts/panel-run.sh` launcher.
+  Next: WP3 one-shot context (speed gate), then WP4 evaluation automation.

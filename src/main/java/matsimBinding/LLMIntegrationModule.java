@@ -85,7 +85,10 @@ public class LLMIntegrationModule extends AbstractModule {
         }
         
         if(this.type.equals(ConnectionType.replanning)) {
-	        this.addPlanStrategyBinding(LLMReplanningStrategyModule.StrategyName).toProvider(LLMReplanningStrategyProvider.class);
+	        // Singleton: the strategy wraps a singleton module, and panel mode
+	        // must recognise the very instance the StrategyManager runs.
+	        this.addPlanStrategyBinding(LLMReplanningStrategyModule.StrategyName)
+	            .toProvider(LLMReplanningStrategyProvider.class).in(Singleton.class);
 	        bind(LLMReplanningStrategyModule.class).asEagerSingleton();
 	        this.addControlerListenerBinding().to(LLMReplanningStrategyModule.class).asEagerSingleton();
         }

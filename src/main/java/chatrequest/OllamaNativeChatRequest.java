@@ -45,6 +45,14 @@ public class OllamaNativeChatRequest implements IChatCompletionRequest {
         return this;
     }
 
+    /** Ollama {@code keep_alive}: how long the model stays resident after a request; empty = server default. */
+    private String keepAlive = "";
+
+    public OllamaNativeChatRequest withKeepAlive(String keepAlive) {
+        this.keepAlive = keepAlive == null ? "" : keepAlive.trim();
+        return this;
+    }
+
     @Override
     public String serializeToHttpBody(List<IChatMessage> messages,
                                       List<JsonObject> tools,
@@ -61,6 +69,9 @@ public class OllamaNativeChatRequest implements IChatCompletionRequest {
         payload.addProperty("model", modelName);
         payload.addProperty("stream", stream);
         payload.addProperty("think", enableThinking);
+        if (!keepAlive.isEmpty()) {
+            payload.addProperty("keep_alive", keepAlive);
+        }
 
         // Options block — native place for per-request runtime knobs.
         JsonObject options = new JsonObject();

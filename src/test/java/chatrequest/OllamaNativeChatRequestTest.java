@@ -22,6 +22,19 @@ class OllamaNativeChatRequestTest {
     }
 
     @Test
+    void keepAliveEmittedOnlyWhenSet() {
+        String withKeep = new OllamaNativeChatRequest().withKeepAlive("10m").serializeToHttpBody(
+                singleUserMessage(), Collections.emptyList(), Collections.emptyMap(),
+                "auto", 0.3, 4096, 0, "qwen3.5", false, true);
+        assertEquals("10m", JsonParser.parseString(withKeep).getAsJsonObject().get("keep_alive").getAsString());
+
+        String without = new OllamaNativeChatRequest().serializeToHttpBody(
+                singleUserMessage(), Collections.emptyList(), Collections.emptyMap(),
+                "auto", 0.3, 4096, 0, "qwen3.5", false, true);
+        assertFalse(JsonParser.parseString(without).getAsJsonObject().has("keep_alive"));
+    }
+
+    @Test
     void emitsNumCtxWhenContextWindowPositive() {
         String body = REQ.serializeToHttpBody(
                 singleUserMessage(),

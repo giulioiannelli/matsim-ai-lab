@@ -439,9 +439,27 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 	 * @return ids of the selected AI agents
 	 */
 	public static List<Id<Person>> assignAISubpopulations(Scenario scenario, int numberOfAIAgents, long seed) {
-		List<Person> eligible = new ArrayList<>();
 		for(Person p : scenario.getPopulation().getPersons().values()){
 			PopulationUtils.putSubpopulation(p, org.matsim.core.config.groups.ScoringConfigGroup.DEFAULT_SUBPOPULATION);
+		}
+		List<Id<Person>> selected = tagAIAgents(scenario, numberOfAIAgents, seed);
+		for(Id<Person> id : selected){
+			PopulationUtils.putSubpopulation(scenario.getPopulation().getPersons().get(id), LLM_SUBPOPULATION);
+		}
+		return selected;
+	}
+
+	/**
+	 * Panel variant of {@link #assignAISubpopulations}: tags the same seeded
+	 * selection with {@code isAI} but leaves subpopulations untouched, so panel
+	 * agents keep every rule-based strategy and the LLM strategy is applied to
+	 * them by {@code matsimBinding.panel.PanelStrategyChooser} only.
+	 *
+	 * @return ids of the panel agents
+	 */
+	public static List<Id<Person>> tagAIAgents(Scenario scenario, int numberOfAIAgents, long seed) {
+		List<Person> eligible = new ArrayList<>();
+		for(Person p : scenario.getPopulation().getPersons().values()){
 			if(p.getSelectedPlan().getPlanElements().size() > 3) {
 				eligible.add(p);
 			}
@@ -452,7 +470,6 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 		for(int idx = 0; idx < target; idx++){
 			Person person = eligible.get(idx);
 			person.getAttributes().putAttribute("isAI", true);
-			PopulationUtils.putSubpopulation(person, LLM_SUBPOPULATION);
 			selected.add(person.getId());
 		}
 		return selected;

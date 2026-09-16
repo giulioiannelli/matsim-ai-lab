@@ -64,7 +64,9 @@ public class ChatCompletionClientImpl implements IChatCompletionClient {
 	private IChatCompletionRequest requestBuilderFor(BackendType backend) {
 		return switch (backend) {
 			case OPENAI_COMPAT -> new OpenAiCompatChatRequest();
-			case OLLAMA_NATIVE -> new OllamaNativeChatRequest().withGpuLayers(config.getGpuLayers());
+			case OLLAMA_NATIVE -> new OllamaNativeChatRequest()
+					.withGpuLayers(config.getGpuLayers())
+					.withKeepAlive(config.getKeepAlive());
 		};
 	}
 

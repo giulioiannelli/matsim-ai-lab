@@ -293,6 +293,13 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
      */
     private int gpuLayers = 0;
 
+    /**
+     * How long the chat model stays loaded after a request (Ollama {@code keep_alive},
+     * e.g. "10m"). Empty = server default. A shared server may default to seconds,
+     * which forces a reload between agents; the run evicts the model when it ends.
+     */
+    private String keepAlive = "10m";
+
     /** Random seed for reproducible outputs (use same seed for consistent results) */
     private int seed = 42;
     
@@ -420,6 +427,23 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
      * Before this iteration, default behavior is used.
      */
     private int iterationToStartAIActivity = 50;
+
+    /**
+     * Panel mode: AI agents stay in the default subpopulation with every
+     * rule-based strategy, and the LLM strategy is forced on a budgeted,
+     * trigger-selected subset of them each iteration (see matsimBinding.panel).
+     * Off = legacy mode, where AI agents form their own LLM-only subpopulation.
+     */
+    private boolean panelMode = false;
+
+    /** Panel mode: maximum number of LLM queries per iteration. */
+    private int maxQueriesPerIteration = 10;
+
+    /**
+     * Panel mode: share of the panel (worst executed-score drop first) that is
+     * eligible for an LLM query in a given iteration, before the budget applies.
+     */
+    private double triggerScoreDropQuantile = 0.2;
 
     // ========================================================================
     // MODEL PROFILE
@@ -606,6 +630,12 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
     @StringSetter("contextWindowTokens")
     public void setContextWindowTokens(int contextWindowTokens) { this.contextWindowTokens = contextWindowTokens; }
 
+    @StringGetter("keepAlive")
+    public String getKeepAlive() { return keepAlive; }
+
+    @StringSetter("keepAlive")
+    public void setKeepAlive(String keepAlive) { this.keepAlive = keepAlive == null ? "" : keepAlive; }
+
     @StringGetter("gpuLayers")
     public int getGpuLayers() { return gpuLayers; }
 
@@ -783,6 +813,24 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
     public int getIterationToStartAIActivity() {
     	return iterationToStartAIActivity;
     }
+
+    @StringGetter("panelMode")
+    public boolean isPanelMode() { return panelMode; }
+
+    @StringSetter("panelMode")
+    public void setPanelMode(boolean panelMode) { this.panelMode = panelMode; }
+
+    @StringGetter("maxQueriesPerIteration")
+    public int getMaxQueriesPerIteration() { return maxQueriesPerIteration; }
+
+    @StringSetter("maxQueriesPerIteration")
+    public void setMaxQueriesPerIteration(int maxQueriesPerIteration) { this.maxQueriesPerIteration = maxQueriesPerIteration; }
+
+    @StringGetter("triggerScoreDropQuantile")
+    public double getTriggerScoreDropQuantile() { return triggerScoreDropQuantile; }
+
+    @StringSetter("triggerScoreDropQuantile")
+    public void setTriggerScoreDropQuantile(double q) { this.triggerScoreDropQuantile = q; }
 
     @StringSetter("iterationToStartAIActivity")
     public void setIterationToStartAIActivity(int iterationToStartAIActivity) {

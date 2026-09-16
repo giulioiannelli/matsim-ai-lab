@@ -5,6 +5,58 @@ data. Session-level operational logs stay in `.claude/diary/`.
 
 ---
 
+## 2026-09-16 (night) — Panel plan accepted; WP1 warm-up + WP2 panel strategy built
+
+**Decision (PI)**: "go with the defaults" on the panel plan
+(`.claude/plans/panel-replanning-plan.md`): panel 200, trigger = worst 20 %
+executed-score drop (+ stuck, + never reviewed), dev sample 10 %, archetype
+transfer deferred.
+
+**WP1 — healthy ground (done, run registered)**. `RunSiouxFalls` is now a
+picocli warm-up producer (`--innovation-boost`, `--boost-until`,
+`--disable-innovation-after`); `org.matsim.project.ground.GroundOptions`
+(`--plans-file`, `--sample`, `--capacity-factor`) is shared with the LLM
+runner. First warm-up `siouxfalls-s0.10-b10-seed4711`: 8,460 agents, 100
+iterations, 7.5 min wall. The 10 % sample is *not* gridlocked even at it.0
+(12 stuck legs of 27.7k departures) — the gridlock is a full-scale
+phenomenon. Executed score 18.76 → 20.16 with a plateau once the boost ends
+at it.50; 0 stuck legs at it.100. Mode shares moved car/pt/walk
+78/19/3 % → 61/28/11 %: the boosted SubtourModeChoice finds a strongly more
+pt/walk-heavy equilibrium than the initial diaries. Worth remembering when
+we compare LLM decisions to "the population": the rule-based ground already
+shifted a lot.
+
+**WP2 — LLM as a normal strategy on a panel (code done, smoke running)**.
+New package `matsimBinding.panel`: `PanelSelection` (pure rule: stuck →
+never-reviewed → worst score drop within the quantile, then the budget),
+`PanelStrategyChooser` (replaces MATSim's weighted chooser; forces the LLM
+strategy on the chosen agents, lottery for everyone else; writes
+`llm_panel_selection.csv` with the reason per query), `PanelExperienceTracker`
+(stuck events), `PanelModule`. Runner flags: `--panel --max-queries
+--trigger-quantile`. Panel agents stay in the default subpopulation with all
+rule-based strategies; the LLM strategy is registered with weight 0. Legacy
+AI-only subpopulation kept behind the flag being off.
+
+Bug found by the first smoke: Guice handed the chooser a *fresh* copy of the
+LLM strategy, so the identity check against the StrategyManager's copy failed
+and no query was ever sent (silent fall-back to the lottery). Fix: the LLM
+strategy is bound as a singleton. Second smoke (4 iterations, panel 20,
+budget 3, warmed 10 % ground) sends queries as expected.
+
+**Panel smoke result** (`…-panel20q3`, registered): 12 queries over 4
+iterations, 11 applied, 0 tool parsing/verification/execution failures, no
+round-cap hits; one agent stopped calling tools after 3 retries (known
+failure mode). The ground did not move (executed score 20.16 → 20.15, 0
+stuck), as it must with 12 queries on 8,460 agents. Selection reasons were
+all NEVER_REVIEWED because a fresh panel is reviewed first; the score-drop
+trigger only bites once the panel has been through once (20 agents / 3 per
+iteration → from iteration 8). Speed is the problem: median 375 s per agent,
+~18 min per iteration for 3 queries. The 27B is mostly waiting on itself
+(3–9 tool rounds, each 30–45 s, plus a model reload between rounds because
+mari's keep-alive is ~0 s: `keepAlive` config, default "10m", added).
+WP3 (one-shot precomputed context) is therefore next, before any 200-panel
+campaign run.
+
 ## 2026-09-16 (evening) — First 3×3 on the fast 27B: clean protocol, two ugly truths
 
 **Run**: 3 agents × 3 LLM iterations, seed 4721, 27B + gpuLayers + local

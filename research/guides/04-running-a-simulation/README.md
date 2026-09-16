@@ -173,12 +173,63 @@ Note: `Run.java` is designed for custom scenarios with your own data files. For 
 # Sioux Falls baseline
 ./mvnw -q compile exec:java -Dexec.mainClass="org.matsim.project.RunSiouxFalls" -Dexec.args="100"
 
+# Sioux Falls warm-up: 10 % sample, innovation x10 for the first half, plans saved
+./mvnw -q compile exec:java -Dexec.mainClass="org.matsim.project.RunSiouxFalls" \
+  -Dexec.args="100 --sample=0.1 --innovation-boost=10 --boost-until=50 --seed=4711"
+
 # Kelheim multimodal
 ./mvnw -q compile exec:java -Dexec.mainClass="org.matsim.project.RunKelheim" -Dexec.args="50"
 
 # Unit test (equil scenario)
 ./mvnw test -Dtest=RunMatsimTest
 ```
+
+### Ground options (shared by `RunSiouxFalls` and `RunSiouxFallsLLMAgents`)
+
+Full-scale Sioux Falls is gridlocked from iteration 0 (see
+`research/persona-emergence/evaluation-checkpoints.md` §4.0), so experiments
+start from a *warmed* ground: a rule-based run whose final plans are reused.
+
+| Arg | Default | Description |
+|-----|---------|-------------|
+| `--plans-file` | scenario default | Plans replacing the population, typically `output/<warm-up>/output_plans.xml.gz` |
+| `--sample` | `1.0` | Keep this share of the population (seeded) and set flow = f, storage = f^0.75 |
+| `--capacity-factor` | derived from `--sample` | Capacity scaling only, for plans that are already a sample |
+
+`RunSiouxFalls` warm-up controls: `--innovation-boost` (weight multiplier for
+ReRoute / SubtourModeChoice / TimeAllocationMutator, restored at
+`--boost-until`, default half the run) and `--disable-innovation-after`
+(fraction, MATSim core, default 0.8). Output dir:
+`output/siouxfalls[-sF][-warm][-bX][-seedN]`.
+
+Feeding a warmed 10 % ground to the LLM runner:
+
+```bash
+./mvnw -q compile exec:java -Dexec.mainClass="org.matsim.project.RunSiouxFallsLLMAgents" \
+  -Dexec.args="3 qwen3.6:27b --plans-file=output/siouxfalls-s0.10-b10-seed4711/output_plans.xml.gz \
+  --capacity-factor=0.1 --num-agents=3 --prompt-variant=persona --seed=4721"
+```
+
+### Panel mode (`RunSiouxFallsLLMAgents --panel`)
+
+Default for the persona-emergence campaign from 2026-09-16
+(`.claude/plans/panel-replanning-plan.md`). Panel agents keep every
+rule-based strategy; the LLM strategy (weight 0 in the lottery) is forced on
+a budgeted subset chosen by `matsimBinding.panel.PanelSelection`: stuck last
+iteration → never reviewed → worst executed-score drop within
+`--trigger-quantile`, cut to `--max-queries`. Reasons are logged per query in
+`llm_panel_selection.csv`. Without `--panel` the legacy LLM-only
+subpopulation is used.
+
+| Arg | Default | Description |
+|-----|---------|-------------|
+| `--panel` | off | Enable panel mode |
+| `--num-agents` | 5 | Panel size (seeded selection) |
+| `--max-queries` | 10 | LLM queries per iteration |
+| `--trigger-quantile` | 0.2 | Share of the panel eligible per iteration (worst score drop first) |
+
+One-command launcher with eviction on exit: `scripts/panel-run.sh`
+(env: `PLANS CAPF ITERS PANEL BUDGET QUANTILE CAP SEED MODEL EXTRA`).
 
 ## Troubleshooting
 

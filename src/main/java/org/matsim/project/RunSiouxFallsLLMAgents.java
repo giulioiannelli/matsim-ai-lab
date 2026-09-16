@@ -18,8 +18,10 @@ import matsimBinding.LLMIntegrationModule;
 import matsimBinding.LLMReplanningStrategyModule;
 import matsimBinding.profile.ModelProfile;
 import matsimBinding.profile.ModelProfileApplier;
+import org.matsim.project.ground.GroundOptions;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
@@ -111,6 +113,24 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
             defaultValue = "0")
     private int embeddingPort;
 
+    @Option(names = {"--panel"},
+            description = "Panel mode: AI agents keep all rule-based strategies; the LLM strategy is forced on a "
+                    + "budgeted, trigger-selected subset each iteration. Off = legacy LLM-only subpopulation.")
+    private boolean panelMode;
+
+    @Option(names = {"--max-queries"},
+            description = "Panel mode: maximum LLM queries per iteration.",
+            defaultValue = "10")
+    private int maxQueriesPerIteration;
+
+    @Option(names = {"--trigger-quantile"},
+            description = "Panel mode: share of the panel (worst executed-score drop first) eligible per iteration.",
+            defaultValue = "0.2")
+    private double triggerQuantile;
+
+    @Mixin
+    private GroundOptions ground = new GroundOptions();
+
     public static void main(String[] args) {
         int exit = new CommandLine(new RunSiouxFallsLLMAgents()).execute(args);
         System.exit(exit);
@@ -129,6 +149,7 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         if (randomSeed != null) {
             config.global().setRandomSeed(randomSeed);
         }
+        ground.applyToConfig(config);
 
         LLMConfigGroup llmConfig = new LLMConfigGroup();
 
@@ -172,8 +193,12 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         llmConfig.setNumberOfAIAgents(numAgents);
         llmConfig.setIterationToStartAIActivity(0);
         llmConfig.setMaxToolIterations(maxToolIterations);
+        llmConfig.setPanelMode(panelMode);
+        llmConfig.setMaxQueriesPerIteration(maxQueriesPerIteration);
+        llmConfig.setTriggerScoreDropQuantile(triggerQuantile);
 
-        String runName = composeOutputDirName("siouxfalls", llmConfig, randomSeed);
+        String runName = composeOutputDirName("siouxfalls" + ground.tag(), llmConfig, randomSeed);
+        if (panelMode) runName += "-panel" + numAgents + "q" + maxQueriesPerIteration;
         String outputDir = "./output/" + runName;
         config.controller().setOutputDirectory(outputDir);
 
@@ -187,17 +212,72 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
 
         config.addModule(llmConfig);
 
-        // AI agents live in their own subpopulation whose only strategy is the
-        // LLM planner, so every selected agent is queried each iteration instead
-        // of competing in the whole-population strategy lottery. The default
-        // strategies (loaded from the scenario config) stay on the default
-        // subpopulation for everyone else. The new subpopulation needs its own
-        // scoring parameters, so mirror the default ones onto it.
+        if (panelMode) {
+            // Panel agents stay with everyone else (no subpopulations): the LLM
+            // strategy is registered with weight 0 so the lottery never draws
+            // it, and PanelStrategyChooser forces it on the chosen agents.
+            config.replanning().addStrategySettings(
+                new org.matsim.core.config.groups.ReplanningConfigGroup.StrategySettings()
+                    .setStrategyName(LLMReplanningStrategyModule.StrategyName)
+                    .setWeight(0.0));
+        } else {
+            configureLegacySubpopulations(config);
+        }
+
+        Scenario scenario = ScenarioUtils.loadScenario(config);
+        ground.applyToScenario(scenario);
+        // Tag AI agents (and, in legacy mode, assign subpopulations) BEFORE building
+        // the controler, so subpopulation-aware core listeners (ScoreStats, scoring)
+        // see the final subpopulations when they initialise at startup.
+        if (panelMode) {
+            LLMReplanningStrategyModule.tagAIAgents(scenario, numAgents, config.global().getRandomSeed());
+        } else {
+            LLMReplanningStrategyModule.assignAISubpopulations(
+                    scenario, numAgents, config.global().getRandomSeed());
+        }
+        Controler controler = new Controler(scenario);
+        controler.addOverridingModule(new SimWrapperModule());
+        controler.addOverridingModule(new LLMIntegrationModule(
+                LLMIntegrationModule.ConnectionType.replanning,
+                llmConfig.isComparisonToolsEnabled()));
+        if (panelMode) {
+            controler.addOverridingModule(new matsimBinding.panel.PanelModule());
+        }
+
+        System.out.println("\n=== Running Sioux Falls with LLM-Powered Agent Replanning ===");
+        System.out.println("Iterations: " + iterations);
+        System.out.println("Model: " + modelName);
+        System.out.println("Profile: " + profile.name()
+                + "  reasoning=" + llmConfig.isReasoningModel()
+                + "  thinking=" + llmConfig.isEnableThinking()
+                + "  thinkingCap=" + llmConfig.getThinkingTokenCap());
+        System.out.println((panelMode ? "Panel agents: " : "AI agents: ") + numAgents + " (from iteration 0) of "
+                + scenario.getPopulation().getPersons().size()
+                + (ground.hasPlansFile() ? "  plans: " + ground.getPlansFile() : "")
+                + "  capacity factor: " + ground.effectiveCapacityFactor());
+        if (panelMode) System.out.println("Panel budget: " + maxQueriesPerIteration + " queries/iteration, trigger quantile " + triggerQuantile);
+        System.out.println("Prompt variant: " + llmConfig.getPromptVariant());
+        System.out.println("Context window: " + llmConfig.getContextWindowTokens() + " tokens");
+        System.out.println("============================================================\n");
+
+        controler.run();
+
+        System.out.println("\n=== Simulation Complete ===");
+        System.out.println("Output: " + outputDir + "/");
+        System.out.println("===========================\n");
+        return 0;
+    }
+
+    /**
+     * Legacy mode: AI agents live in their own subpopulation whose only strategy
+     * is the LLM planner, so every selected agent is queried each iteration
+     * instead of competing in the whole-population strategy lottery. The
+     * scenario's strategies are re-keyed from the null default subpopulation to
+     * the explicit "default" one (otherwise non-AI agents would never replan),
+     * and the default scoring parameters are mirrored onto the LLM subpopulation.
+     */
+    private static void configureLegacySubpopulations(Config config) {
         mirrorDefaultScoringToSubpopulation(config, LLMReplanningStrategyModule.LLM_SUBPOPULATION);
-        // The scenario's strategies are registered under the null default
-        // subpopulation. Non-AI agents now sit in the explicit "default"
-        // subpopulation, so re-key those strategies to match; otherwise they
-        // would have no strategy and never replan.
         for (org.matsim.core.config.groups.ReplanningConfigGroup.StrategySettings ss
                 : config.replanning().getStrategySettings()) {
             if (ss.getSubpopulation() == null) {
@@ -210,37 +290,6 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
                 .setWeight(1.0)
                 .setSubpopulation(LLMReplanningStrategyModule.LLM_SUBPOPULATION)
         );
-
-        Scenario scenario = ScenarioUtils.loadScenario(config);
-        // Tag AI agents and assign subpopulations BEFORE building the controler, so
-        // subpopulation-aware core listeners (ScoreStats, scoring) see the final
-        // subpopulations when they initialise at startup.
-        LLMReplanningStrategyModule.assignAISubpopulations(
-                scenario, numAgents, config.global().getRandomSeed());
-        Controler controler = new Controler(scenario);
-        controler.addOverridingModule(new SimWrapperModule());
-        controler.addOverridingModule(new LLMIntegrationModule(
-                LLMIntegrationModule.ConnectionType.replanning,
-                llmConfig.isComparisonToolsEnabled()));
-
-        System.out.println("\n=== Running Sioux Falls with LLM-Powered Agent Replanning ===");
-        System.out.println("Iterations: " + iterations);
-        System.out.println("Model: " + modelName);
-        System.out.println("Profile: " + profile.name()
-                + "  reasoning=" + llmConfig.isReasoningModel()
-                + "  thinking=" + llmConfig.isEnableThinking()
-                + "  thinkingCap=" + llmConfig.getThinkingTokenCap());
-        System.out.println("AI agents: " + numAgents + " (from iteration 0)");
-        System.out.println("Prompt variant: " + llmConfig.getPromptVariant());
-        System.out.println("Context window: " + llmConfig.getContextWindowTokens() + " tokens");
-        System.out.println("============================================================\n");
-
-        controler.run();
-
-        System.out.println("\n=== Simulation Complete ===");
-        System.out.println("Output: " + outputDir + "/");
-        System.out.println("===========================\n");
-        return 0;
     }
 
     /**

@@ -36,7 +36,7 @@ matsim-ai-lab/
 # Args: [iterations] [modelName]
 ./mvnw -q compile exec:java -Dexec.mainClass="org.matsim.project.RunSiouxFallsLLMAgents" -Dexec.args="20 qwen3.5"
 
-# Sioux Falls baseline (no LLM)
+# Sioux Falls baseline (no LLM); also the warm-up producer (--sample, --innovation-boost, see guide 04)
 ./mvnw -q compile exec:java -Dexec.mainClass="org.matsim.project.RunSiouxFalls" -Dexec.args="100"
 
 # Kelheim multimodal (PT, DRT, bike)
