@@ -80,6 +80,19 @@ profiles:
   # weights alone are 16.5 GB, so large contexts spill KV cache to CPU.
   # Probe-validated on mari 2026-07-23: ctx 12288 → 1.0 GB spill (same as
   # ctx 4096), 21.6 tok/s generation. Larger contexts unmeasured.
+  # 9B right-sizing candidate for the remote 2x11GB server: fits fully at
+  # ctx 12288 (the 27B spills and reloads every call above ctx 4096).
+  "qwen3.5:9b":
+    maxTokens: 6144
+    contextWindow: 12288
+    temperature: 0.3
+    enableThinking: true
+    isReasoning: true
+    thinkingTokenCap: 3072
+    endpointStyle: ollama_native
+  # gpuLayers: 999 forces full GPU residency (Ollama num_gpu). The 27B Q4 fits
+  # the remote 2x11GB server at ctx 12288 (17.4 GB), but the server's estimator
+  # otherwise spills ~1.8 GB to CPU, halving speed and reloading every call.
   "qwen3.6:27b":
     maxTokens: 6144
     contextWindow: 12288
@@ -88,6 +101,7 @@ profiles:
     isReasoning: true
     thinkingTokenCap: 3072
     endpointStyle: ollama_native
+    gpuLayers: 999
 
   "qwen3:14b":
     maxTokens: 6144

@@ -61,10 +61,10 @@ public class ChatCompletionClientImpl implements IChatCompletionClient {
 	}
 
 	/** Build a request serializer matched to the backend's wire format. */
-	private static IChatCompletionRequest requestBuilderFor(BackendType backend) {
+	private IChatCompletionRequest requestBuilderFor(BackendType backend) {
 		return switch (backend) {
 			case OPENAI_COMPAT -> new OpenAiCompatChatRequest();
-			case OLLAMA_NATIVE -> new OllamaNativeChatRequest();
+			case OLLAMA_NATIVE -> new OllamaNativeChatRequest().withGpuLayers(config.getGpuLayers());
 		};
 	}
 

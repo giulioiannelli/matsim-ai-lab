@@ -37,6 +37,14 @@ public class OllamaNativeChatRequest implements IChatCompletionRequest {
 
     private static final Gson gson = new Gson();
 
+    /** Ollama {@code num_gpu}: layers forced onto the GPU; 0 = omit and let the server decide. */
+    private int gpuLayers = 0;
+
+    public OllamaNativeChatRequest withGpuLayers(int gpuLayers) {
+        this.gpuLayers = gpuLayers;
+        return this;
+    }
+
     @Override
     public String serializeToHttpBody(List<IChatMessage> messages,
                                       List<JsonObject> tools,
@@ -60,6 +68,9 @@ public class OllamaNativeChatRequest implements IChatCompletionRequest {
         options.addProperty("num_predict", maxTokens);
         if (contextWindow > 0) {
             options.addProperty("num_ctx", contextWindow);
+        }
+        if (gpuLayers > 0) {
+            options.addProperty("num_gpu", gpuLayers);
         }
         payload.add("options", options);
 

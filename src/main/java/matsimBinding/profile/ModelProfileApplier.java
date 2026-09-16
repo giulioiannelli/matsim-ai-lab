@@ -55,6 +55,7 @@ public final class ModelProfileApplier {
         cfg.setReasoningModel(profile.isReasoning());
         cfg.setThinkingTokenCap(profile.thinkingTokenCap());
         cfg.setEnableThinking(profile.enableThinking());
+        cfg.setGpuLayers(profile.gpuLayers());
 
         // Endpoint style routing: flip the backend to OLLAMA_NATIVE when the profile
         // asks for it and the runner left the default OPENAI_COMPAT in place. The
@@ -85,7 +86,8 @@ public final class ModelProfileApplier {
                 + "  temp=" + profile.temperature()
                 + "  thinking=" + profile.enableThinking()
                 + "  reasoning=" + profile.isReasoning()
-                + "  thinkingCap=" + profile.thinkingTokenCap());
+                + "  thinkingCap=" + profile.thinkingTokenCap()
+                + "  gpuLayers=" + profile.gpuLayers());
         return profile;
     }
 }

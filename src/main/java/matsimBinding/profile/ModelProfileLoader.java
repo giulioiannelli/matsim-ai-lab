@@ -70,7 +70,8 @@ public final class ModelProfileLoader {
         boolean reasoning   = boolOf(fields, "isReasoning", false);
         int thinkingCap     = intOf(fields, "thinkingTokenCap", 0);
         String endpointStyle = strOf(fields, "endpointStyle", ModelProfile.ENDPOINT_OPENAI_COMPAT);
-        return new ModelProfile(name, maxTokens, contextWindow, temperature, thinking, reasoning, thinkingCap, endpointStyle);
+        int gpuLayers       = intOf(fields, "gpuLayers", 0);
+        return new ModelProfile(name, maxTokens, contextWindow, temperature, thinking, reasoning, thinkingCap, endpointStyle, gpuLayers);
     }
 
     private static int intOf(Map<String, Object> m, String k, int dflt) {

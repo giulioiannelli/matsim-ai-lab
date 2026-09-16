@@ -17,6 +17,7 @@ package matsimBinding.profile;
  * @param enableThinking   whether to send {@code think=true} / {@code enable_thinking=true}
  * @param isReasoning      model emits reasoning on a separate stream — grammar mode is unsafe
  * @param thinkingTokenCap soft cap on reasoning-token count per round; 0 = unlimited
+ * @param gpuLayers        layers to force onto the GPU (Ollama num_gpu); 0 = server decides
  * @param endpointStyle    one of {@code openai_compat} (Ollama/LM Studio /v1 shim) or
  *                         {@code ollama_native} (Ollama {@code /api/chat}). Use
  *                         {@code ollama_native} for local reasoning models so tool
@@ -31,13 +32,14 @@ public record ModelProfile(
         boolean enableThinking,
         boolean isReasoning,
         int thinkingTokenCap,
-        String endpointStyle
+        String endpointStyle,
+        int gpuLayers
 ) {
     public static final String ENDPOINT_OPENAI_COMPAT = "openai_compat";
     public static final String ENDPOINT_OLLAMA_NATIVE = "ollama_native";
 
     /** Default profile used when no model-specific profile is found. */
     public static ModelProfile defaults(String name) {
-        return new ModelProfile(name, 2048, 8192, 0.7, false, false, 0, ENDPOINT_OPENAI_COMPAT);
+        return new ModelProfile(name, 2048, 8192, 0.7, false, false, 0, ENDPOINT_OPENAI_COMPAT, 0);
     }
 }

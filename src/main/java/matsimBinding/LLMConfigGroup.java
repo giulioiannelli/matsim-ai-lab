@@ -286,6 +286,13 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
      */
     private int contextWindowTokens = 8192;
 
+    /**
+     * Number of model layers to place on the GPU (Ollama {@code num_gpu}). 0 = let the
+     * server decide. A large value (e.g. 999) forces full GPU residency, overriding
+     * the server's conservative memory estimate when the model is known to fit.
+     */
+    private int gpuLayers = 0;
+
     /** Random seed for reproducible outputs (use same seed for consistent results) */
     private int seed = 42;
     
@@ -314,6 +321,16 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
     
     /** Name of the embedding model (e.g., "text-embedding-3-small" for OpenAI) */
     private String embeddingModelName = "text-embedding-3-small";
+
+    /**
+     * Optional dedicated embedding server host. Empty = use {@code llmHost}/{@code llmPort}.
+     * Lets the embedder run on a different Ollama instance than the chat model,
+     * e.g. when the chat server evicts the chat model to host the embedder.
+     */
+    private String embeddingHost = "";
+
+    /** Port of the dedicated embedding server; only used when {@code embeddingHost} is set. 0 = use {@code llmPort}. */
+    private int embeddingPort = 0;
     
     /** 
      * Embedding backend selection for RAG functionality.
@@ -589,6 +606,12 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
     @StringSetter("contextWindowTokens")
     public void setContextWindowTokens(int contextWindowTokens) { this.contextWindowTokens = contextWindowTokens; }
 
+    @StringGetter("gpuLayers")
+    public int getGpuLayers() { return gpuLayers; }
+
+    @StringSetter("gpuLayers")
+    public void setGpuLayers(int gpuLayers) { this.gpuLayers = gpuLayers; }
+
     @StringGetter("seed")
     public int getSeed() { return seed; }
     
@@ -638,6 +661,21 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
     
     @StringSetter("embeddingModelName")
     public void setEmbeddingModelName(String embeddingModelName) { this.embeddingModelName = embeddingModelName; }
+
+    @StringGetter("embeddingHost")
+    public String getEmbeddingHost() { return embeddingHost; }
+
+    @StringSetter("embeddingHost")
+    public void setEmbeddingHost(String embeddingHost) { this.embeddingHost = embeddingHost == null ? "" : embeddingHost; }
+
+    @StringGetter("embeddingPort")
+    public int getEmbeddingPort() { return embeddingPort; }
+
+    @StringSetter("embeddingPort")
+    public void setEmbeddingPort(int embeddingPort) { this.embeddingPort = embeddingPort; }
+
+    /** True when a dedicated embedding server (distinct from the chat server) is configured. */
+    public boolean hasDedicatedEmbeddingServer() { return !embeddingHost.isBlank(); }
 
     @StringGetter("embeddingFunction")
     public String getEmbeddingFunction() { return embeddingFunction; }
@@ -823,6 +861,10 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
      * @return Complete URL for embedding requests
      */
     public String getFullEmbeddingUrl() {
+        if (hasDedicatedEmbeddingServer()) {
+            int port = embeddingPort > 0 ? embeddingPort : llmPort;
+            return String.format("http://%s:%d%s", embeddingHost, port, embeddingPath);
+        }
         return useHttps
             ? String.format("https://%s%s", llmHost, embeddingPath)
             : String.format("http://%s:%d%s", llmHost, llmPort, embeddingPath);

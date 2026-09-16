@@ -4,10 +4,18 @@
 # eviction after every run. All knobs env-overridable.
 #
 #   MODEL=qwen3.6:27b SEEDS="4711 4712 4713" scripts/ws0-rebaseline.sh
+#
+# Embeddings go to a separate local Ollama by default (EMBED_HOST/EMBED_PORT,
+# started by scripts/matsim-env-start.sh) so the remote chat server never
+# swaps the chat model out for the embedder. EMBED_HOST="" = same server.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
 MODEL="${MODEL:-qwen3.6:27b}"
+EMBED_HOST="${EMBED_HOST-localhost}"
+EMBED_PORT="${EMBED_PORT:-11435}"
+EMBED_ARGS=""
+[ -n "$EMBED_HOST" ] && EMBED_ARGS="--embedding-host=$EMBED_HOST --embedding-port=$EMBED_PORT"
 ITERS="${ITERS:-10}"
 AGENTS="${AGENTS:-5}"
 CAP="${CAP:-10}"
@@ -18,7 +26,7 @@ for seed in "${seeds[@]}"; do
     echo "=== SEED $seed BEGINS: $MODEL ${ITERS}it ${AGENTS}ag cap${CAP} ==="
     ./mvnw -q compile exec:java \
         -Dexec.mainClass="org.matsim.project.RunSiouxFallsLLMAgents" \
-        -Dexec.args="$ITERS $MODEL --num-agents=$AGENTS --prompt-variant=persona --enable-comparison-tools --max-tool-iterations=$CAP --seed=$seed"
+        -Dexec.args="$ITERS $MODEL --num-agents=$AGENTS --prompt-variant=persona --enable-comparison-tools --max-tool-iterations=$CAP --seed=$seed $EMBED_ARGS"
     status=$?
     scripts/ollama-gpu.sh evict || true
     if [ "$status" -ne 0 ]; then

@@ -101,6 +101,16 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
             defaultValue = "qwen3-embedding:0.6b")
     private String embeddingModel;
 
+    @Option(names = {"--embedding-host"},
+            description = "Host of a dedicated embedding server (empty = same server as the chat model).",
+            defaultValue = "")
+    private String embeddingHost;
+
+    @Option(names = {"--embedding-port"},
+            description = "Port of the dedicated embedding server (0 = same port as the chat model).",
+            defaultValue = "0")
+    private int embeddingPort;
+
     public static void main(String[] args) {
         int exit = new CommandLine(new RunSiouxFallsLLMAgents()).execute(args);
         System.exit(exit);
@@ -156,6 +166,8 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         // Ollama embedding endpoint for RAG.
         llmConfig.setEmbeddingPath("/v1/embeddings");
         llmConfig.setEmbeddingModelName(embeddingModel);
+        llmConfig.setEmbeddingHost(embeddingHost);
+        llmConfig.setEmbeddingPort(embeddingPort);
 
         llmConfig.setNumberOfAIAgents(numAgents);
         llmConfig.setIterationToStartAIActivity(0);
