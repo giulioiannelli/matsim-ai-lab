@@ -11,6 +11,10 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
+# Never leave our models resident on the (shared) GPU server: evict on ANY
+# exit — normal end, early stop, or the script being killed mid-run.
+trap 'scripts/ollama-gpu.sh evict || true' EXIT
+
 MODEL="${MODEL:-qwen3.6:27b}"
 EMBED_HOST="${EMBED_HOST-localhost}"
 EMBED_PORT="${EMBED_PORT:-11435}"

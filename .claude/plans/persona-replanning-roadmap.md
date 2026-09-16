@@ -1,5 +1,7 @@
 # Persona-Driven Replanning — Master Roadmap
 
+> **2026-09-16 — RESUME HERE:** evaluation design moved to [panel-replanning-plan.md](panel-replanning-plan.md) (LLM as strategy on a warmed ground, panel + trigger). Awaiting PI sign-off. Context in `research/persona-emergence/lab-log.md` (2026-09-16 entries).
+
 > **Local-first, committed plan.** This is the authoritative roadmap for the
 > project. It lives in-repo under `.claude/plans/` and is version-controlled so
 > it cannot be washed out by global memory or lost chats. Update it here; do not

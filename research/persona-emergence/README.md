@@ -157,6 +157,8 @@ Ordered by cost; each step gates on "metrics not regressed" (multi-seed).
 
 ## Folder map
 
+- Next-phase design (proposed 2026-09-16): `.claude/plans/panel-replanning-plan.md`.
+
 - `evaluation-checkpoints.md` — pipeline panorama, output map, visualisation, checkpoints & controls for judging LLM replanning.
 
 - `README.md` — this plan (update statuses in place).
