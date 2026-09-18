@@ -115,7 +115,11 @@ persona-memory speed-ups come after, on the same infrastructure.
   prompt 6.4k → 2.4k tokens, 2/2 applied each), 6 pending (sweep on the 27B
   once 3–5 are measured there), 7 ✗ mari serves one request at a time.
   **27B measured (2026-09-18 15:29)**: decision output 12/12 applied, 1
-  round, 66 s median/agent (baseline 374 s); reasoning sweep next.
+  round, 66 s median/agent (baseline 374 s). Sweep: brief 53 s (9/9),
+  no-thinking 46 s (9/9). **Campaign default: `--decision-output
+  --reasoning-style=brief`** (keeps a reasoning trace for the persona
+  metrics). Speed gate met (≤ 45 s reachable once reloads from other
+  tenants stop). Next: WP4, then the first campaign run from mari.
   8. **Run the MATSim side on mari too** (PI, 2026-09-18: the laptop cannot
      stay open all day). Today the Java simulation runs on the laptop as a
      systemd user unit and only inference is remote, so closing the lid

@@ -50,6 +50,17 @@ generation is now 72 % of the wall, which is what the reasoning sweep
 targets. Decisions look like the persona reasoning of the tool-path runs
 (7 keep, 5 mode changes), to be checked with the persona metrics.
 
+**Reasoning sweep (27B, decision output, 9 queries each)**: free 66 s
+median (12/12), brief 53 s (9/9), no-thinking 46 s (9/9). In all three,
+a third or more of the time is still model reloads caused by a colleague's
+model alternating with ours; with the server to ourselves the same runs
+project to ≈ 50 / 35 / 27 s. Decision: **brief is the campaign default** —
+it keeps a reasoning trace (the persona metrics need one; no-thinking has
+none) at a fifth of the baseline cost; free stays as the persona-quality
+reference run. The 25-iteration × 10-query campaign now costs ≈ 2.5 h
+instead of 26 h. Speed gate met; next: WP4 evaluation automation, then the
+first campaign run — from mari, so the laptop can close (plan step 8).
+
 **Hazard found by the local one-shot smoke (extract_plan path)**: the 9B
 returned a walk leg with a route stub (`{"routeType":"generic","distance":…}`,
 no links). The converter attached it, MATSim's parallel plans writer threw a
