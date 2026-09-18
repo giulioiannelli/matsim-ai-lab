@@ -182,6 +182,7 @@ conda run -n matsim-ai matsim-analyze reasoning output/siouxfalls-llm-agents/
 conda run -n matsim-ai matsim-analyze bottlenecks output/siouxfalls-llm-agents/
 conda run -n matsim-ai matsim-analyze tool-usage output/siouxfalls-llm-agents/
 conda run -n matsim-ai matsim-analyze persona output/siouxfalls-llm-agents/
+conda run -n matsim-ai matsim-analyze timing output/siouxfalls-llm-agents/   # load / prompt-eval / generation split, rounds per agent
 conda run -n matsim-ai matsim-analyze compare output/run-a/ output/run-b/
 ```
 

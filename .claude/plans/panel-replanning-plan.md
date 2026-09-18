@@ -109,6 +109,13 @@ persona-memory speed-ups come after, on the same infrastructure.
   Target after 1–6: median ≤ 45 s per agent (from 375 s), i.e. a 10-query
   iteration in ≤ 10 min and a 25-iteration × 10-query campaign run in an
   evening.
+  **Status 2026-09-18**: 1 ✅ 2 ✅ (measured: rounds 25–165 s → 10–27 s once
+  resident; 7k-token prompt re-read in 1.2 s), 3 ✅ 4 ✅ 5 ✅ in code
+  (`--one-shot`, `--decision-output`; local 9B smokes: 1–2 rounds/agent,
+  prompt 6.4k → 2.4k tokens, 2/2 applied each), 6 pending (sweep on the 27B
+  once 3–5 are measured there), 7 ✗ mari serves one request at a time.
+  Next measurement: 27B, same 12-agent smoke as the baseline, with
+  `--decision-output` (queued behind the 50-agent run).
 - **WP4 evaluation**: ground-health + checkpoints 1–7 automated in
   `matsim-analyze` (`ground-health` command; per-agent decision table across
   iterations); control A/B scripts.

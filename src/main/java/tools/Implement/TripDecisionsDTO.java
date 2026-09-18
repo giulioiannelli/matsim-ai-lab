@@ -1,7 +1,10 @@
 package tools.Implement;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import tools.ErrorMessages;
 import tools.ToolArgument;
 import tools.ToolArgumentDTO;
@@ -59,6 +62,32 @@ public class TripDecisionsDTO extends ToolArgumentDTO<List<TripDecision>> {
         return ok;
     }
 
+    /**
+     * Parser hook used by {@link ToolArgument#fromJson}: accepts the array
+     * directly ({@code {"value": [...]}} after the framework's wrapping), the
+     * array under {@code decisions}, and either of them as a JSON string —
+     * small models often stringify nested arguments.
+     */
+    public static TripDecisionsDTO fromJsonObject(JsonObject obj, Gson gson) {
+        JsonElement list = obj.has("decisions") ? obj.get("decisions") : obj.get("value");
+        if (list != null && list.isJsonPrimitive() && list.getAsJsonPrimitive().isString()) {
+            String text = list.getAsString().trim();
+            list = text.isEmpty() ? new JsonArray() : JsonParser.parseString(text);
+        }
+        if (list != null && list.isJsonObject() && list.getAsJsonObject().has("decisions")) {
+            return fromJsonObject(list.getAsJsonObject(), gson);
+        }
+        TripDecisionsDTO dto = new TripDecisionsDTO();
+        if (list != null && list.isJsonArray()) {
+            for (JsonElement e : list.getAsJsonArray()) {
+                dto.decisions.add(gson.fromJson(e, Entry.class));
+            }
+        } else if (list != null && !list.isJsonNull()) {
+            throw new IllegalArgumentException("decisions must be a list, got: " + list);
+        }
+        return dto;
+    }
+
     public static final JsonObject STATIC_SCHEMA;
     static {
         JsonObject trip = new JsonObject();
@@ -88,15 +117,7 @@ public class TripDecisionsDTO extends ToolArgumentDTO<List<TripDecision>> {
         list.addProperty("type", "array");
         list.add("items", item);
         list.addProperty("description", "One entry per trip you change. Trips you leave out stay as they are; an empty list keeps the whole day.");
-        JsonObject props = new JsonObject();
-        props.add("decisions", list);
-        JsonArray required = new JsonArray();
-        required.add("decisions");
-        JsonObject schema = new JsonObject();
-        schema.addProperty("type", "object");
-        schema.add("properties", props);
-        schema.add("required", required);
-        STATIC_SCHEMA = schema;
+        STATIC_SCHEMA = list;
     }
 
     public static ToolArgument<List<TripDecision>, TripDecisionsDTO> forArgument(String name) {

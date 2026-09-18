@@ -231,6 +231,19 @@ subpopulation is used.
 One-command launcher with eviction on exit: `scripts/panel-run.sh`
 (env: `PLANS CAPF ITERS PANEL BUDGET QUANTILE CAP SEED MODEL EXTRA`).
 
+### Speed flags (WP3, `RunSiouxFallsLLMAgents`)
+
+| Arg | Effect |
+|-----|--------|
+| `--one-shot` | Precompute activity summary, available modes and route comparisons into the first prompt; advertise only `extract_plan` + `router_tool` (tool schemas 21k → 6.7k chars; ~1–2 rounds per agent instead of ~6.6) |
+| `--decision-output` | Conversation ends with `decide_trips` (per-trip mode / departure-shift list, routed by MATSim) instead of a full plan JSON; implies `--one-shot`; ~1 round, ~50 tokens of output |
+| `--llm-host` / `--llm-port` | Chat server (default localhost:11434 = the tunnel). Use `--llm-port=11435` for the laptop's Ollama (dev smokes on `qwen3.5:9b` without touching mari) |
+
+Model residency: requests carry `keepAlive` (config, default 10m) so the
+model stays loaded between rounds and Ollama reuses the prompt prefix;
+`scripts/probes/keepalive_probe.sh` checks a server honours it. Measure any
+run with `conda run -n matsim-ai matsim-analyze timing <output-dir>`.
+
 ## Troubleshooting
 
 | Problem | Solution |

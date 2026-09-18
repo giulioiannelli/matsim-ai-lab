@@ -104,6 +104,44 @@ class DecideTripsToolTest {
     }
 
     @Test
+    void dtoAcceptsArrayWrappedNestedAndStringified() {
+        com.google.gson.Gson gson = new com.google.gson.Gson();
+        String arr = "[{\"trip\":2,\"mode\":\"car\",\"departureShiftMinutes\":-15}]";
+        for (String json : List.of(
+                "{\"value\":" + arr + "}",
+                "{\"decisions\":" + arr + "}",
+                "{\"value\":\"" + arr.replace("\"", "\\\"") + "\"}",
+                "{\"decisions\":\"" + arr.replace("\"", "\\\"") + "\"}")) {
+            TripDecisionsDTO dto = TripDecisionsDTO.fromJsonObject(
+                    com.google.gson.JsonParser.parseString(json).getAsJsonObject(), gson);
+            List<TripDecision> base = dto.toBaseClass(Map.of(), new ErrorMessages());
+            assertEquals(1, base.size(), json);
+            assertEquals(2, base.get(0).trip());
+            assertEquals(-15, base.get(0).departureShiftMinutes());
+        }
+        TripDecisionsDTO empty = TripDecisionsDTO.fromJsonObject(
+                com.google.gson.JsonParser.parseString("{\"value\":\"[]\"}").getAsJsonObject(), gson);
+        assertTrue(empty.toBaseClass(Map.of(), new ErrorMessages()).isEmpty());
+    }
+
+    @Test
+    void toolCallParsesStringifiedDecisionsEndToEnd() {
+        Person p = personHomeWorkHome();
+        Map<String, Object> ctx = new HashMap<>();
+        ctx.put("person", p);
+        ctx.put("activityFacilities", facilities);
+        ctx.put("tripRoutersProvider", (jakarta.inject.Provider<org.matsim.core.router.TripRouter>) () -> {
+            throw new UnsupportedOperationException("router not needed: verification happens first");
+        });
+        DecideTripsTool tool = new DecideTripsTool();
+        // Unknown trip 9 must be reported through verification, proving the
+        // stringified list was parsed rather than dropped.
+        var resp = tool.call("{\"decisions\":\"[{\\\"trip\\\":9,\\\"mode\\\":\\\"walk\\\"}]\"}", "c1", null, ctx);
+        assertNull(resp.getToolCallOutputContainer());
+        assertTrue(resp.getResponseJson().contains("trip 9"), resp.getResponseJson());
+    }
+
+    @Test
     void dtoParsesAndValidatesModes() {
         TripDecisionsDTO dto = new com.google.gson.Gson().fromJson(
                 "{\"decisions\":[{\"trip\":1,\"mode\":\"PT\"},{\"trip\":2,\"mode\":\"teleport\"}]}", TripDecisionsDTO.class);
