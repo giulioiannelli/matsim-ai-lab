@@ -114,8 +114,15 @@ persona-memory speed-ups come after, on the same infrastructure.
   (`--one-shot`, `--decision-output`; local 9B smokes: 1–2 rounds/agent,
   prompt 6.4k → 2.4k tokens, 2/2 applied each), 6 pending (sweep on the 27B
   once 3–5 are measured there), 7 ✗ mari serves one request at a time.
-  Next measurement: 27B, same 12-agent smoke as the baseline, with
-  `--decision-output` (queued behind the 50-agent run).
+  **27B measured (2026-09-18 15:29)**: decision output 12/12 applied, 1
+  round, 66 s median/agent (baseline 374 s); reasoning sweep next.
+  8. **Run the MATSim side on mari too** (PI, 2026-09-18: the laptop cannot
+     stay open all day). Today the Java simulation runs on the laptop as a
+     systemd user unit and only inference is remote, so closing the lid
+     kills a run. Needed: Java 21 + the repo + Qdrant (or the in-memory
+     fallback) on mari, `--llm-host=localhost`, outputs synced back. Then
+     campaign runs are launched with `ssh mari systemd-run …` and the
+     laptop is free.
 - **WP4 evaluation**: ground-health + checkpoints 1–7 automated in
   `matsim-analyze` (`ground-health` command; per-agent decision table across
   iterations); control A/B scripts.

@@ -41,6 +41,15 @@ Flag `--one-shot`; output dir tag `-oneshot`. First render checked on a
 local 9B run (`--llm-port` added so the laptop's Ollama can serve dev
 smokes without touching mari).
 
+**27B decision-output smoke (same 12 agents, same seed as the baseline)**:
+12/12 applied, one round per agent (one agent needed three), **66 s median
+per agent vs 374 s** — 5.7× — with 23 % of the remaining time still model
+reloads (a colleague's llama3 alternated with us; without that ≈ 50 s).
+Prompt 2.7k tokens (was 7.3k), output ~1.1k tokens, almost all thinking:
+generation is now 72 % of the wall, which is what the reasoning sweep
+targets. Decisions look like the persona reasoning of the tool-path runs
+(7 keep, 5 mode changes), to be checked with the persona metrics.
+
 **Hazard found by the local one-shot smoke (extract_plan path)**: the 9B
 returned a walk leg with a route stub (`{"routeType":"generic","distance":…}`,
 no links). The converter attached it, MATSim's parallel plans writer threw a
