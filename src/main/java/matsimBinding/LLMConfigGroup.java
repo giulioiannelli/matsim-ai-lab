@@ -450,6 +450,14 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
      */
     private boolean decisionOutput = false;
 
+    /**
+     * Reasoning style hint added to the system prompt: "free" (default, no
+     * hint) or "brief" (asks for a few sentences of reasoning, then a decision).
+     * The thinkingTokenCap only measures; this is the only lever on length
+     * short of switching thinking off.
+     */
+    private String reasoningStyle = "free";
+
     /** Panel mode: maximum number of LLM queries per iteration. */
     private int maxQueriesPerIteration = 10;
 
@@ -842,6 +850,14 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
 
     /** Name of the tool that ends a conversation with a plan. */
     public String getFinalToolName() { return decisionOutput ? "decide_trips" : "extract_plan"; }
+
+    @StringGetter("reasoningStyle")
+    public String getReasoningStyle() { return reasoningStyle; }
+
+    @StringSetter("reasoningStyle")
+    public void setReasoningStyle(String reasoningStyle) { this.reasoningStyle = reasoningStyle == null ? "free" : reasoningStyle; }
+
+    public boolean isBriefReasoning() { return "brief".equalsIgnoreCase(reasoningStyle); }
 
     @StringGetter("panelMode")
     public boolean isPanelMode() { return panelMode; }

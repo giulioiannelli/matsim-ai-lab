@@ -372,7 +372,7 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 	 * an addendum describing them is appended to the chosen base prompt.
 	 */
 	private static String buildSystemMessageForVariant(String variant, Person person,
-			boolean comparisonToolsEnabled, boolean oneShot, boolean decisionOutput) {
+			boolean comparisonToolsEnabled, boolean oneShot, boolean decisionOutput, boolean briefReasoning) {
 		String base;
 		if ("persona".equalsIgnoreCase(variant)) {
 			base = prompts.PersonaPromptBuilder.buildSystemPrompt(person, oneShot, decisionOutput);
@@ -382,9 +382,9 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 		}
 		// In one-shot mode the comparison tools are hidden (their results are in
 		// the prompt), so their addendum would only invite calls to unknown tools.
-		return comparisonToolsEnabled && !oneShot
-				? base + IndividualPrompt.comparisonToolsAddendum
-				: base;
+		if (comparisonToolsEnabled && !oneShot) base += IndividualPrompt.comparisonToolsAddendum;
+		if (briefReasoning) base += IndividualPrompt.personaBriefReasoningAddendum;
+		return base;
 	}
 
 	/** User message that carries the plan JSON (+ optional precomputed block); shape depends on prompt variant. */
@@ -505,7 +505,8 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 					person,
 					llmConfig.isComparisonToolsEnabled(),
 					llmConfig.isOneShotContext(),
-					llmConfig.isDecisionOutput()));
+					llmConfig.isDecisionOutput(),
+					llmConfig.isBriefReasoning()));
 			chatManager.setPersonId(person.getId());
 			chatManager.setContextObject(new HashMap<>(this.contextObject));
 			chatManager.getContextObject().put("person",person);

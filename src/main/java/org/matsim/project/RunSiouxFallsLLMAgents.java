@@ -128,6 +128,15 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
                     + "and advertise only the action tools (extract_plan, router_tool, validate_timing).")
     private boolean oneShot;
 
+    @Option(names = {"--thinking"},
+            description = "Override the profile's thinking switch (true/false). Off = the model answers without a reasoning trace.")
+    private Boolean thinkingOverride;
+
+    @Option(names = {"--reasoning-style"},
+            description = "'free' (default) or 'brief': ask for a few sentences of reasoning, then a decision.",
+            defaultValue = "free")
+    private String reasoningStyle;
+
     @Option(names = {"--decision-output"},
             description = "End conversations with decide_trips (per-trip mode/departure decisions, routed by MATSim) "
                     + "instead of extract_plan (full plan JSON). Implies --one-shot.")
@@ -197,6 +206,10 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         if (contextWindowOverride != null) {
             llmConfig.setContextWindowTokens(contextWindowOverride);
         }
+        if (thinkingOverride != null) {
+            llmConfig.setEnableThinking(thinkingOverride);
+        }
+        llmConfig.setReasoningStyle(reasoningStyle);
         llmConfig.setPromptVariant(promptVariant);
         llmConfig.setComparisonToolsEnabled(enableComparisonTools);
 
@@ -332,6 +345,8 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         if (cfg.isComparisonToolsEnabled()) sb.append("-cmp");
         if (cfg.isOneShotContext()) sb.append("-oneshot");
         if (cfg.isDecisionOutput()) sb.append("-decide");
+        if (cfg.isReasoningModel() && !cfg.isEnableThinking()) sb.append("-nothink");
+        if (cfg.isBriefReasoning()) sb.append("-brief");
         if (seed != null) sb.append("-s").append(seed);
         return sb.toString();
     }

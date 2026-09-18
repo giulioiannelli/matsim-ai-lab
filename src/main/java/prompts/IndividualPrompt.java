@@ -141,6 +141,10 @@ public class IndividualPrompt {
 			+ "\n"
 			+ "{{finalCall}}";
 
+	/** Appended to the system prompt when reasoningStyle = brief. */
+	public static final String personaBriefReasoningAddendum =
+			"\n\nKeep your thinking short: a few sentences on what matters to you today, then decide. Do not re-derive the numbers you were given.";
+
 	public static final String personaFinalCallExtract =
 			"When you have settled on a day that feels right, call `extract_plan` with the full revised plan. That is what the simulation will run.";
 
