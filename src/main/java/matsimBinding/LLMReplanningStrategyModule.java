@@ -97,6 +97,8 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 
 	private Map<String,Object> contextObject = new HashMap<>();
 
+	private final matsimBinding.oneshot.OneShotContextBuilder oneShotBuilder = new matsimBinding.oneshot.OneShotContextBuilder();
+
 	private BufferedWriter csvWriter = null;
 	
 	private BufferedWriter combinedCsvWriter = null;
@@ -268,13 +270,18 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 		  try {
 			chat.clear();
 			String basePlan = PlanDTO.toDTOFromBaseObject().apply(plan).toJsonObject(this.gson).toString();
-			String userPrompt = buildUserPromptForVariant(llmConfig.getPromptVariant(), basePlan);
+			String precomputed = llmConfig.isOneShotContext()
+					? oneShotBuilder.build(plan, chat.getContextObject())
+					: "";
+			String userPrompt = buildUserPromptForVariant(llmConfig.getPromptVariant(), basePlan, precomputed,
+					llmConfig.getFinalToolName());
 			System.out.println("Sending querry for person Id "+ person.getId());
 			System.out.println(userPrompt);
 
 			Map<String, ExternalValidator<?>> validators = new HashMap<>();
 
-			validators.put("extract_plan", new ExternalValidator<Plan>() {
+			final String finalTool = llmConfig.getFinalToolName();
+			validators.put(finalTool, new ExternalValidator<Plan>() {
 			    @Override
 			    public Class<Plan> getTargetType() {
 			        return Plan.class;
@@ -282,7 +289,7 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 
 			    @Override
 			    public String getTargetToolName() {
-			        return "extract_plan";
+			        return finalTool;
 			    }
 
 			    @Override
@@ -302,7 +309,7 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 			allstats.add(stats);
 			Plan outPlan = null;
 			for(IToolResponse<?> response: output.values()) {
-				if(response.getName().equals("extract_plan")) {
+				if(response.getName().equals(finalTool)) {
 					outPlan = (Plan) response.getToolCallOutputContainer();
 				}
 			}
@@ -364,25 +371,29 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 	 * attribute lines rendered from the person. When comparison tools are active
 	 * an addendum describing them is appended to the chosen base prompt.
 	 */
-	private static String buildSystemMessageForVariant(String variant, Person person, boolean comparisonToolsEnabled) {
+	private static String buildSystemMessageForVariant(String variant, Person person,
+			boolean comparisonToolsEnabled, boolean oneShot, boolean decisionOutput) {
 		String base;
 		if ("persona".equalsIgnoreCase(variant)) {
-			base = prompts.PersonaPromptBuilder.buildSystemPrompt(person);
+			base = prompts.PersonaPromptBuilder.buildSystemPrompt(person, oneShot, decisionOutput);
 		} else {
 			base = IndividualPrompt.planReconstructionSystemPrompt
 					+ " You are person " + person.getId().toString();
 		}
-		return comparisonToolsEnabled
+		// In one-shot mode the comparison tools are hidden (their results are in
+		// the prompt), so their addendum would only invite calls to unknown tools.
+		return comparisonToolsEnabled && !oneShot
 				? base + IndividualPrompt.comparisonToolsAddendum
 				: base;
 	}
 
-	/** User message that carries the plan JSON; shape depends on prompt variant. */
-	private static String buildUserPromptForVariant(String variant, String basePlanJson) {
+	/** User message that carries the plan JSON (+ optional precomputed block); shape depends on prompt variant. */
+	private static String buildUserPromptForVariant(String variant, String basePlanJson, String precomputed, String finalTool) {
 		if ("persona".equalsIgnoreCase(variant)) {
-			return prompts.PersonaPromptBuilder.buildTaskPrompt(basePlanJson);
+			return prompts.PersonaPromptBuilder.buildTaskPrompt(basePlanJson, precomputed, finalTool);
 		}
-		return IndividualPrompt.planReconstructionTaskPrompt + "\n" + basePlanJson;
+		return IndividualPrompt.planReconstructionTaskPrompt + "\n" + basePlanJson
+				+ (precomputed.isEmpty() ? "" : "\n\n" + precomputed);
 	}
 
 	public static IterationStats compute(List<ChatStats> allStats) {
@@ -492,12 +503,16 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 			chatManager.setSystemMessage(buildSystemMessageForVariant(
 					llmConfig.getPromptVariant(),
 					person,
-					llmConfig.isComparisonToolsEnabled()));
+					llmConfig.isComparisonToolsEnabled(),
+					llmConfig.isOneShotContext(),
+					llmConfig.isDecisionOutput()));
 			chatManager.setPersonId(person.getId());
 			chatManager.setContextObject(new HashMap<>(this.contextObject));
 			chatManager.getContextObject().put("person",person);
 
-			if ("staged".equalsIgnoreCase(System.getenv("MATSIM_LLM_TOOL_FILTER"))) {
+			if (llmConfig.isOneShotContext()) {
+				chatManager.setToolFilter(new matsimBinding.oneshot.OneShotToolFilter(llmConfig.isDecisionOutput()));
+			} else if ("staged".equalsIgnoreCase(System.getenv("MATSIM_LLM_TOOL_FILTER"))) {
 				chatManager.setToolFilter(new tools.StagedToolFilter());
 			}
 

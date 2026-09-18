@@ -98,6 +98,16 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
                     + "and mobsim stochasticity. Use distinct seeds for independent replicate runs.")
     private Long randomSeed;
 
+    @Option(names = {"--llm-host"},
+            description = "Host of the chat model server.",
+            defaultValue = "localhost")
+    private String llmHost;
+
+    @Option(names = {"--llm-port"},
+            description = "Port of the chat model server (11434 = default Ollama / the tunnel).",
+            defaultValue = "11434")
+    private int llmPort;
+
     @Option(names = {"--embedding-model"},
             description = "Embedding model name on the LLM server (for the Qdrant RAG store).",
             defaultValue = "qwen3-embedding:0.6b")
@@ -112,6 +122,16 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
             description = "Port of the dedicated embedding server (0 = same port as the chat model).",
             defaultValue = "0")
     private int embeddingPort;
+
+    @Option(names = {"--one-shot"},
+            description = "Precompute activity summary, available modes and route comparisons into the first prompt "
+                    + "and advertise only the action tools (extract_plan, router_tool, validate_timing).")
+    private boolean oneShot;
+
+    @Option(names = {"--decision-output"},
+            description = "End conversations with decide_trips (per-trip mode/departure decisions, routed by MATSim) "
+                    + "instead of extract_plan (full plan JSON). Implies --one-shot.")
+    private boolean decisionOutput;
 
     @Option(names = {"--panel"},
             description = "Panel mode: AI agents keep all rule-based strategies; the LLM strategy is forced on a "
@@ -157,8 +177,8 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         // (the broadly-compatible shim path) and the profile applier can promote
         // it to OLLAMA_NATIVE when a profile asks for it.
         llmConfig.setBackend(BackendType.OPENAI_COMPAT);
-        llmConfig.setLlmHost("localhost");
-        llmConfig.setLlmPort(11434);
+        llmConfig.setLlmHost(llmHost);
+        llmConfig.setLlmPort(llmPort);
         // llmPath left null → the backend's default path is used.
         llmConfig.setModelName(modelProfileOverride != null ? modelProfileOverride : modelName);
         llmConfig.setUseHttps(false);
@@ -193,6 +213,8 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         llmConfig.setNumberOfAIAgents(numAgents);
         llmConfig.setIterationToStartAIActivity(0);
         llmConfig.setMaxToolIterations(maxToolIterations);
+        llmConfig.setOneShotContext(oneShot || decisionOutput);
+        llmConfig.setDecisionOutput(decisionOutput);
         llmConfig.setPanelMode(panelMode);
         llmConfig.setMaxQueriesPerIteration(maxQueriesPerIteration);
         llmConfig.setTriggerScoreDropQuantile(triggerQuantile);
@@ -239,7 +261,8 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         controler.addOverridingModule(new SimWrapperModule());
         controler.addOverridingModule(new LLMIntegrationModule(
                 LLMIntegrationModule.ConnectionType.replanning,
-                llmConfig.isComparisonToolsEnabled()));
+                llmConfig.isComparisonToolsEnabled(),
+                llmConfig.isDecisionOutput()));
         if (panelMode) {
             controler.addOverridingModule(new matsimBinding.panel.PanelModule());
         }
@@ -307,6 +330,8 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         if (cfg.isReasoningModel()) sb.append("-reasoning");
         if ("persona".equalsIgnoreCase(cfg.getPromptVariant())) sb.append("-persona");
         if (cfg.isComparisonToolsEnabled()) sb.append("-cmp");
+        if (cfg.isOneShotContext()) sb.append("-oneshot");
+        if (cfg.isDecisionOutput()) sb.append("-decide");
         if (seed != null) sb.append("-s").append(seed);
         return sb.toString();
     }

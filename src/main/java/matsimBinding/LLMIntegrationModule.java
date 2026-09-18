@@ -41,9 +41,17 @@ public class LLMIntegrationModule extends AbstractModule {
 	}
 
 	public LLMIntegrationModule(ConnectionType type, boolean comparisonToolsEnabled) {
+		this(type, comparisonToolsEnabled, false);
+	}
+
+	/** @param decisionOutput also register decide_trips (see tools.Implement.DecideTripsTool) */
+	public LLMIntegrationModule(ConnectionType type, boolean comparisonToolsEnabled, boolean decisionOutput) {
 		this.type = type;
 		this.comparisonToolsEnabled = comparisonToolsEnabled;
+		this.decisionOutput = decisionOutput;
 	}
+
+	private final boolean decisionOutput;
 
     private final DefaultToolManager toolManager = new DefaultToolManager();
     private final ChatManagerContainer container = new ChatManagerContainer();
@@ -66,6 +74,9 @@ public class LLMIntegrationModule extends AbstractModule {
         toolManager.registerTool(new ActivityChainSummaryTool());
         toolManager.registerTool(new AvailableModesTool());
         toolManager.registerTool(new ValidateTimingTool());
+        if (decisionOutput) {
+            toolManager.registerTool(new tools.Implement.DecideTripsTool());
+        }
         if (comparisonToolsEnabled) {
             toolManager.registerTool(new tools.Implement.comparison.CompareRoutesTool());
             toolManager.registerTool(new tools.Implement.comparison.EvaluatePlanTool());

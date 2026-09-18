@@ -89,9 +89,10 @@ public class AvailableModesTool implements ITool<String> {
         String carAvail = attrs.get("carAvail") != null ? attrs.get("carAvail").toString() : "never";
         String bikeAvail = attrs.get("bikeAvailability") != null ? attrs.get("bikeAvailability").toString() : "never";
 
-        // Track vehicle locations by scanning the plan
-        String carLocation = findVehicleLocation(plan, "car");
-        String bikeLocation = findVehicleLocation(plan, "bike");
+        // Where each vehicle is when the person is at fromFacilityId (first
+        // visit), following the plan chronologically up to that point.
+        String carLocation = findVehicleLocation(plan, "car", fromFacilityId);
+        String bikeLocation = findVehicleLocation(plan, "bike", fromFacilityId);
 
         // Determine the home facility (first activity, assumed to be home)
         String homeFacility = findHomeFacility(plan);
@@ -217,27 +218,41 @@ public class AvailableModesTool implements ITool<String> {
      *
      * Returns null if the vehicle hasn't been used (it's at home).
      */
-    private static String findVehicleLocation(Plan plan, String vehicleMode) {
+    /**
+     * Location of the given vehicle at the moment the person is at
+     * {@code atFacilityId} (its first visit in the plan), or at the end of the
+     * day if that facility is never visited. The vehicle starts wherever the
+     * plan starts and moves only with legs of its own mode; stage activities
+     * (e.g. "pt interaction") do not count as places.
+     */
+    static String findVehicleLocation(Plan plan, String vehicleMode, String atFacilityId) {
         if (plan == null || plan.getPlanElements() == null) return null;
-
+        String target = atFacilityId == null ? null : normalizeFacility(atFacilityId);
         String location = null;
-        boolean lastLegUsedVehicle = false;
+        boolean firstActivity = true;
+        boolean movingWithVehicle = false;
 
         for (PlanElement pe : plan.getPlanElements()) {
             if (pe instanceof Leg) {
                 Leg leg = (Leg) pe;
                 String mode = leg.getRoutingMode() != null ? leg.getRoutingMode() : leg.getMode();
-                lastLegUsedVehicle = vehicleMode.equals(mode);
-            } else if (pe instanceof Activity && lastLegUsedVehicle) {
+                if (vehicleMode.equals(mode)) movingWithVehicle = true;
+            } else if (pe instanceof Activity) {
                 Activity act = (Activity) pe;
-                if (!isInteractionActivity(act)) {
-                    location = getFacilityId(act);
+                if (isInteractionActivity(act)) continue;
+                String here = getFacilityId(act);
+                if (firstActivity) {
+                    location = here;
+                    firstActivity = false;
+                } else if (movingWithVehicle) {
+                    location = here;
                 }
-                // Don't reset lastLegUsedVehicle here — for PT chains,
-                // the vehicle location is only updated at real activities
+                movingWithVehicle = false;
+                if (target != null && here != null && normalizeFacility(here).equals(target)) {
+                    return location;
+                }
             }
         }
-
         return location;
     }
 

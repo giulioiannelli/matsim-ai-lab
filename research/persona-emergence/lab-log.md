@@ -5,6 +5,50 @@ data. Session-level operational logs stay in `.claude/diary/`.
 
 ---
 
+## 2026-09-18 — Speed programme: steps 1–2 confirmed, one-shot built, a tool bug found
+
+**Where the time went** (panel smoke, 12 agents, 79 rounds, 4,410 s of LLM
+wall): model load 35 % (~19.5 s reload on every round), prompt evaluation
+14 % (7.5k tokens re-read per round), generation 50 % (730 tokens/round at
+26 tok/s, ~90 % thinking). Recorded with the enlarged WP3 plan.
+
+**Step 1 (keep-alive) + step 2 (prefix cache) work.** `keepAlive: 10m` is
+sent; `scripts/probes/keepalive_probe.sh` shows the second of two requests
+loading in 0.7 s and the model held for 10 min. In the running 50-agent
+panel run the first ~6 rounds still reloaded every time (11–33 s each; a
+colleague's GPU job started at the same minute and the two workloads were
+evicting each other), then from 14:22 on: load 0.8 s, and the *second round
+of a conversation evaluates 7,000 prompt tokens in 1.2 s* (first round
+7.2 s) — Ollama reuses the cached prefix. Rounds went from 25–165 s to
+10–27 s. Lesson for the shared server: our speed depends on nobody else
+alternating models with us; worth a word with the colleague about time
+windows.
+
+**mari serialises requests**: the tiny probe waited 100 s behind the
+simulation's request, so the server runs one request at a time
+(`OLLAMA_NUM_PARALLEL` = 1, not ours to change). Step 7 (concurrency) is
+therefore off the table on mari; parallelism would only queue.
+
+**Step 3 (one-shot context) built**: `matsimBinding.oneshot` runs
+activity_chain_summary, available_modes (per place) and compare_routes (per
+trip, only the modes available there) programmatically and writes a compact
+"what you already know" block into the first user message; the system
+prompt's tool guidance switches to "decide, don't look up"; only
+`extract_plan` and `router_tool` are advertised (tool schemas 21k → ~6.7k
+chars, step 5 in passing). Legs whose mode changes may be returned without
+a route: the converter accepts it and MATSim routes them before the mobsim.
+Flag `--one-shot`; output dir tag `-oneshot`. First render checked on a
+local 9B run (`--llm-port` added so the laptop's Ollama can serve dev
+smokes without touching mari).
+
+**Tool bug found by reading the one-shot block**: `available_modes` reported
+"car is at home, not at work" for an agent who had *driven* to work. The
+tool returned the car's end-of-day location instead of its location while
+the person is at the queried place. Every past run's agents were told, at
+their workplace, that their car was elsewhere. Fixed (`findVehicleLocation`
+now follows the plan up to the first visit of the queried facility) with
+regression tests; affects tool-path and one-shot alike from the next run.
+
 ## 2026-09-16 (night) — Panel plan accepted; WP1 warm-up + WP2 panel strategy built
 
 **Decision (PI)**: "go with the defaults" on the panel plan

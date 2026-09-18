@@ -34,21 +34,58 @@ public final class PersonaPromptBuilder {
      * {@link IndividualPrompt#personaSystemPromptTemplate}.
      */
     public static String buildSystemPrompt(Person person) {
+        return buildSystemPrompt(person, false);
+    }
+
+    /**
+     * @param oneShot true when the information tools' results are precomputed
+     *                into the user message (see matsimBinding.oneshot), so the
+     *                guidance tells the agent to decide rather than look things up
+     */
+    public static String buildSystemPrompt(Person person, boolean oneShot) {
+        return buildSystemPrompt(person, oneShot, false);
+    }
+
+    /** @param decisionOutput the conversation ends with decide_trips instead of extract_plan */
+    public static String buildSystemPrompt(Person person, boolean oneShot, boolean decisionOutput) {
         String personaLines = composePersonaLines(person);
         return IndividualPrompt.personaSystemPromptTemplate
-                .replace("{{personaLines}}", personaLines);
+                .replace("{{personaLines}}", personaLines)
+                .replace("{{toolGuidance}}", oneShot ? IndividualPrompt.personaOneShotToolGuidance : IndividualPrompt.personaToolGuidance)
+                .replace("{{routingRule}}", oneShot ? IndividualPrompt.personaOneShotRoutingRule : IndividualPrompt.personaRoutingRule)
+                .replace("{{finalCall}}", decisionOutput ? IndividualPrompt.personaFinalCallDecide : IndividualPrompt.personaFinalCallExtract);
     }
 
     /** Build the persona-variant user message, pairing the task prompt with the plan JSON. */
     public static String buildTaskPrompt(String planJson) {
+        return buildTaskPrompt(planJson, "");
+    }
+
+    /**
+     * @param precomputedBlock text placed after the plan (empty = none), e.g. the
+     *                         one-shot "what you already know" block
+     */
+    public static String buildTaskPrompt(String planJson, String precomputedBlock) {
+        return buildTaskPrompt(planJson, precomputedBlock, "extract_plan");
+    }
+
+    /** @param finalTool name of the tool that locks the day in (extract_plan or decide_trips) */
+    public static String buildTaskPrompt(String planJson, String precomputedBlock, String finalTool) {
+        String lockIn = "decide_trips".equals(finalTool)
+                ? " Keeping the day exactly as it is can be the right call, but you must still call"
+                  + " decide_trips (with an empty list) to lock it in."
+                  + " As soon as you are satisfied, call decide_trips with your changes."
+                : " Keeping the plan exactly as it is can be"
+                  + " the right call, but you must still call extract_plan with it to lock it in."
+                  + " As soon as you are satisfied, call extract_plan with your final plan.";
         return IndividualPrompt.personaTaskPrompt
                 + planJson
+                + (precomputedBlock == null || precomputedBlock.isEmpty() ? "" : "\n\n" + precomputedBlock)
                 + "\n\nReorganize it as you see fit — keep what feels right, change what doesn't."
                 + " Talk through your choices as you go."
                 + " Once you have the facts you need, decide and commit — don't re-check routes"
-                + " or modes you have already looked up. Keeping the plan exactly as it is can be"
-                + " the right call, but you must still call extract_plan with it to lock it in."
-                + " As soon as you are satisfied, call extract_plan with your final plan.";
+                + " or modes you have already looked up."
+                + lockIn;
     }
 
     /**

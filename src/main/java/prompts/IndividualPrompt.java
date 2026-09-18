@@ -131,15 +131,35 @@ public class IndividualPrompt {
 			+ "\n"
 			+ "Talk through it out loud. Say what you prefer, what bothers you, what you would rather do. Compare options when it helps — \"twenty minutes on the bus is too long, I would rather drive\" or \"I could take the car but I hate parking downtown.\" Bring yourself in: your age, whether you have a car, whether you are working today.\n"
 			+ "\n"
-			+ "When you need a real number — a route, a travel time, what modes actually work from a given place — call a tool. Tools give you facts, not opinions. The opinions are yours.\n"
+			+ "{{toolGuidance}}"
 			+ "\n"
 			+ "Ground rules MATSim needs from you:\n"
 			+ "- Car and bike are location-constrained. You cannot leave home without a car and then drive back from work — the car is wherever you last parked it.\n"
 			+ "- A public transport trip is one trip, even if it shows up as walk -> pt interaction -> pt -> pt interaction -> walk. Treat it as origin-to-destination with mode `pt` and let the routing tool build the chain.\n"
-			+ "- Do not invent routes or travel times. Call the routing tool if you change a leg's mode, departure time, or destination.\n"
+			+ "{{routingRule}}"
 			+ "- Keep the activities (type, location, order) from the original day; reshape the legs around them. Activity type names (`home`, `work`, `secondary`, ...) come from the scenario and are all valid exactly as given — never rename or \"correct\" them.\n"
 			+ "\n"
-			+ "When you have settled on a day that feels right, call `extract_plan` with the full revised plan. That is what the simulation will run.";
+			+ "{{finalCall}}";
+
+	public static final String personaFinalCallExtract =
+			"When you have settled on a day that feels right, call `extract_plan` with the full revised plan. That is what the simulation will run.";
+
+	public static final String personaFinalCallDecide =
+			"When you have settled on a day that feels right, call `decide_trips`: one entry per trip you change (its number from the list, the mode, and optionally how many minutes earlier or later you leave). Trips you do not list stay as they are; an empty list keeps the day exactly as planned. The routes are computed for you, and that is what the simulation will run.";
+
+	/** Default tool guidance for the persona template: facts come from tool calls. */
+	public static final String personaToolGuidance =
+			"When you need a real number — a route, a travel time, what modes actually work from a given place — call a tool. Tools give you facts, not opinions. The opinions are yours.\n";
+
+	public static final String personaRoutingRule =
+			"- Do not invent routes or travel times. Call the routing tool if you change a leg's mode, departure time, or destination.\n";
+
+	/** One-shot variant: the facts are already in the message; decide and commit. */
+	public static final String personaOneShotToolGuidance =
+			"The facts you need — your activity chain, which modes you can use from each place, and how long each trip takes by each mode — are already written out in the message below. Read them, weigh them as yourself, and decide. Do not look them up again.\n";
+
+	public static final String personaOneShotRoutingRule =
+			"- Do not invent routes or travel times: use the numbers given. If you change a leg's mode or departure time, set the new mode and leave the route out — it will be routed for you. Call `router_tool` only if you really want to see the exact route first.\n";
 
 	/** Persona variant of the user-message task prompt. */
 	public static final String personaTaskPrompt =

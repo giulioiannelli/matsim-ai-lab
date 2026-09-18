@@ -1,5 +1,6 @@
 package tools.Implement;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -57,6 +58,29 @@ class AvailableModesToolTest {
             }
         }
         throw new AssertionError("no car mode in response: " + resp.getResponseJson());
+    }
+
+    private static Plan homeWorkHome(String toWorkMode, String toHomeMode) {
+        Plan plan = PopulationUtils.getFactory().createPlan();
+        plan.addActivity(PopulationUtils.createActivityFromFacilityId("home", Id.create(HOME, ActivityFacility.class)));
+        plan.addLeg(PopulationUtils.createLeg(toWorkMode));
+        plan.addActivity(PopulationUtils.createActivityFromFacilityId("work", Id.create("work_fac", ActivityFacility.class)));
+        plan.addLeg(PopulationUtils.createLeg(toHomeMode));
+        plan.addActivity(PopulationUtils.createActivityFromFacilityId("home", Id.create(HOME, ActivityFacility.class)));
+        return plan;
+    }
+
+    @Test
+    void carIsWhereItWasDrivenTo_notWhereItEndsTheDay() {
+        Plan plan = homeWorkHome("car", "car");
+        assertEquals("work_fac", AvailableModesTool.findVehicleLocation(plan, "car", "work_fac"));
+        assertEquals(HOME, AvailableModesTool.findVehicleLocation(plan, "car", HOME));
+    }
+
+    @Test
+    void carStaysHomeWhenPersonTakesPt() {
+        Plan plan = homeWorkHome("pt", "pt");
+        assertEquals(HOME, AvailableModesTool.findVehicleLocation(plan, "car", "work_fac"));
     }
 
     @Test

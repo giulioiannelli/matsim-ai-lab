@@ -63,8 +63,52 @@ persona-memory speed-ups come after, on the same infrastructure.
   subpopulation with weight + `maxQueriesPerIteration` + trigger rule in
   `LLMConfigGroup`; panel selection by seed; AI-only subpopulation kept as an
   opt-in mode for legacy comparisons.
-- **WP3 one-shot context**: precomputed `available_modes` +
-  `compare_routes` per trip injected into the user prompt.
+- **WP3 speed programme** (enlarged 2026-09-17, PI: "everything we can
+  do for speed-up is fundamental before starting simulations"). Measured on
+  the panel smoke (12 agents, 79 rounds, 4,410 s of LLM wall):
+  model load 35 % (a ~19.5 s reload on *every* round, mari keep-alive ≈ 0),
+  prompt evaluation 14 % (7.5k tokens re-read per round, no cache reuse
+  after a reload), generation 50 % (730 tokens/round at 26 tok/s, ~90 %
+  of it thinking). Steps, in order, each measured on the same 12-agent
+  panel smoke (seed 4721) before the next:
+  1. **Keep the model resident** — `keepAlive` 10m (done in 5ec24f0).
+     Expected −35 % wall; risk none (evict on exit unchanged).
+  2. **Verify prefix (KV) cache reuse** across rounds once resident: prompt
+     tokens per round should fall from ~7.5k to the size of the new tool
+     result. Expected most of the 14 %; risk none. If Ollama does not reuse,
+     shrink the prefix (step 5).
+  3. **One-shot context** — precompute `activity_chain_summary`,
+     `available_modes` per trip end and `compare_routes` per trip and put
+     them in the user prompt; tools stay registered but the prompt says the
+     work is done. Tool order today is the same for every agent
+     (summary → modes → compare → route → route → extract), so this removes
+     3–4 of the 6.6 rounds. Expected −40 % of the remaining wall; risk:
+     prompt grows (~2–3k tokens) — offset by step 5; the "tool discipline"
+     metric changes meaning (fewer voluntary calls) and must be reported as
+     such.
+  4. **Mode-decision output** — the model returns per-trip mode choices (and
+     optional departure-time shifts) in a small JSON; MATSim's TripRouter
+     builds the routes. Removes the two `router_tool` rounds and the 2–4k-
+     token plan JSON in `extract_plan`; plan validity is guaranteed by
+     construction (no frozen stage activities, no invented links). Expected
+     ≈ 1–2 rounds per agent; risk: a new extraction tool + validator, so the
+     legacy full-plan path stays available behind a flag for comparison.
+  5. **Prompt slimming** — tool schemas are 21k chars (~5k tokens) sent
+     every round; trim descriptions, advertise only the tools the variant
+     needs. Expected −30 % prompt tokens; risk: hallucinated tool names if
+     descriptions get too thin (metric exists).
+  6. **Thinking budget sweep** — `thinkingTokenCap` 3072 → 1536 → 1024 on the
+     same smoke; keep the largest cut that holds success ≥ 90 % and the
+     persona/contradiction metrics. Expected up to −50 % generation; risk:
+     quality, hence the gate.
+  7. **Concurrency probe** — send 2–4 agents' requests at once and measure
+     throughput (Ollama batches decode if the server's parallelism allows;
+     mari's setting is not ours to change). If throughput scales, the
+     strategy module queries agents in parallel threads (budget-bounded).
+     Expected 1.5–3×; risk: none if it does not scale (falls back to 1).
+  Target after 1–6: median ≤ 45 s per agent (from 375 s), i.e. a 10-query
+  iteration in ≤ 10 min and a 25-iteration × 10-query campaign run in an
+  evening.
 - **WP4 evaluation**: ground-health + checkpoints 1–7 automated in
   `matsim-analyze` (`ground-health` command; per-agent decision table across
   iterations); control A/B scripts.

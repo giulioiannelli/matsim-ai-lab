@@ -436,6 +436,20 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
      */
     private boolean panelMode = false;
 
+    /**
+     * One-shot context: run activity_chain_summary, available_modes and
+     * compare_routes before the first LLM call and put their results in the
+     * prompt, advertising only the action tools (see matsimBinding.oneshot).
+     */
+    private boolean oneShotContext = false;
+
+    /**
+     * Decision output: the terminal tool is decide_trips (per-trip mode /
+     * departure decisions routed by MATSim) instead of extract_plan (full
+     * plan JSON written by the model). Requires oneShotContext.
+     */
+    private boolean decisionOutput = false;
+
     /** Panel mode: maximum number of LLM queries per iteration. */
     private int maxQueriesPerIteration = 10;
 
@@ -813,6 +827,21 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
     public int getIterationToStartAIActivity() {
     	return iterationToStartAIActivity;
     }
+
+    @StringGetter("oneShotContext")
+    public boolean isOneShotContext() { return oneShotContext; }
+
+    @StringSetter("oneShotContext")
+    public void setOneShotContext(boolean oneShotContext) { this.oneShotContext = oneShotContext; }
+
+    @StringGetter("decisionOutput")
+    public boolean isDecisionOutput() { return decisionOutput; }
+
+    @StringSetter("decisionOutput")
+    public void setDecisionOutput(boolean decisionOutput) { this.decisionOutput = decisionOutput; }
+
+    /** Name of the tool that ends a conversation with a plan. */
+    public String getFinalToolName() { return decisionOutput ? "decide_trips" : "extract_plan"; }
 
     @StringGetter("panelMode")
     public boolean isPanelMode() { return panelMode; }
