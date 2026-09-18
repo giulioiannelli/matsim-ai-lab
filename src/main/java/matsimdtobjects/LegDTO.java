@@ -95,10 +95,20 @@ public class LegDTO extends PlanElementDTO<Leg> {
 			if (matsimRoute == null) {
 				return null;
 			}
-			leg.setRoute(matsimRoute);
+			if (hasEndpoints(matsimRoute)) {
+				leg.setRoute(matsimRoute);
+			}
+			// else: a route stub without links (models sometimes echo an empty
+			// route object). Attaching it would crash MATSim's plan writer; an
+			// unrouted leg is routed by MATSim before the mobsim instead.
 		}
 
 		return leg;
+	}
+
+	/** A route MATSim can write and simulate needs both end links. */
+	public static boolean hasEndpoints(Route route) {
+		return route != null && route.getStartLinkId() != null && route.getEndLinkId() != null;
 	}
 
 	@Override

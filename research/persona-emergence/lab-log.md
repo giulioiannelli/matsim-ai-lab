@@ -41,6 +41,16 @@ Flag `--one-shot`; output dir tag `-oneshot`. First render checked on a
 local 9B run (`--llm-port` added so the laptop's Ollama can serve dev
 smokes without touching mari).
 
+**Hazard found by the local one-shot smoke (extract_plan path)**: the 9B
+returned a walk leg with a route stub (`{"routeType":"generic","distance":…}`,
+no links). The converter attached it, MATSim's parallel plans writer threw a
+NullPointerException in a worker thread and the main thread waited on it
+forever — a silent hang, not a crash. Same plan: the car leg's link list was
+*invented* by the model. Fix: `LegDTO` drops routes without both end links
+(MATSim routes the leg before the mobsim); regression test. The
+`decide_trips` path cannot produce either problem, which is the strongest
+argument for decision output beyond speed.
+
 **Tool bug found by reading the one-shot block**: `available_modes` reported
 "car is at home, not at work" for an agent who had *driven* to work. The
 tool returned the car's end-of-day location instead of its location while
