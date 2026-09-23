@@ -279,6 +279,7 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         if (panelMode) {
             controler.addOverridingModule(new matsimBinding.panel.PanelModule());
         }
+        controler.addOverridingModule(new org.matsim.project.progress.EtaReporter.Module());
 
         System.out.println("\n=== Running Sioux Falls with LLM-Powered Agent Replanning ===");
         System.out.println("Iterations: " + iterations);

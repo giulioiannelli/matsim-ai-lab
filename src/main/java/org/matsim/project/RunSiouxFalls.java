@@ -101,6 +101,7 @@ public final class RunSiouxFalls implements Callable<Integer> {
         Controler controler = new Controler(scenario);
         controler.addOverridingModule(new SimWrapperModule());
         controler.addOverridingModule(new InnovationBoost.Module(innovationBoost, until));
+        controler.addOverridingModule(new org.matsim.project.progress.EtaReporter.Module());
 
         System.out.println("\n=== Running Sioux Falls (rule-based) ===");
         System.out.println("Iterations: " + iterations + "  seed: " + config.global().getRandomSeed());

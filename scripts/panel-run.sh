@@ -7,6 +7,7 @@
 #   PLANS=output/siouxfalls-s0.10-b10-seed4711/output_plans.xml.gz CAPF=0.1 \
 #   ITERS=20 PANEL=200 BUDGET=10 SEED=4721 scripts/panel-run.sh
 #
+# Progress and ETA: cat output/<run>/progress.txt (written after every iteration).
 # For a long run, detach it as a user unit so it survives the terminal:
 #   systemd-run --user --unit=matsim-panel --working-directory=$PWD \
 #     -p StandardOutput=file:$PWD/output/logs/panel.log \
