@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.population.Activity;
+import org.matsim.api.core.v01.population.Leg;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Plan;
 import org.matsim.api.core.v01.population.PlanElement;
@@ -76,9 +77,7 @@ public class DecideTripsTool implements ITool<Plan> {
         Person person = personFromContext(context);
         Plan plan = person.getSelectedPlan();
         List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(plan);
-        Map<String, Object> attrs = person.getAttributes().getAsMap();
-        boolean carOwned = attrs.get("carAvail") == null || !"never".equalsIgnoreCase(attrs.get("carAvail").toString());
-        boolean bikeOwned = attrs.get("bikeAvailability") != null && !"never".equalsIgnoreCase(attrs.get("bikeAvailability").toString());
+        Map<Integer, TripDecision> decided = new HashMap<>();
         for (TripDecision d : decisions) {
             if (d.trip() < 1 || d.trip() > trips.size()) {
                 em.addErrorMessages("trip " + d.trip() + " does not exist; the day has " + trips.size() + " trips");
@@ -88,21 +87,56 @@ public class DecideTripsTool implements ITool<Plan> {
                 em.addErrorMessages("trip " + d.trip() + ": unknown mode '" + d.mode() + "'");
                 continue;
             }
-            Activity origin = trips.get(d.trip() - 1).getOriginActivity();
-            String here = origin.getFacilityId() != null ? origin.getFacilityId().toString() : null;
-            if ("car".equals(d.mode())) {
-                if (!carOwned) em.addErrorMessages("trip " + d.trip() + ": you have no car");
-                else if (here != null && !here.equals(AvailableModesTool.findVehicleLocation(plan, "car", here)))
-                    em.addErrorMessages("trip " + d.trip() + ": your car is not at " + here + " (it is at "
-                            + AvailableModesTool.findVehicleLocation(plan, "car", here) + ")");
-            }
-            if ("bike".equals(d.mode())) {
-                if (!bikeOwned) em.addErrorMessages("trip " + d.trip() + ": you have no bike");
-                else if (here != null && !here.equals(AvailableModesTool.findVehicleLocation(plan, "bike", here)))
-                    em.addErrorMessages("trip " + d.trip() + ": your bike is not at " + here);
-            }
+            decided.put(d.trip(), d);
+        }
+        for (String vehicle : List.of("car", "bike")) {
+            checkVehicleChain(vehicle, person, plan, trips, decided, em);
         }
         if (!em.isEmpty()) throw new VerificationFailedException(em.getErrorMessages());
+    }
+
+    /**
+     * Follows the day trip by trip with the decided modes applied over the
+     * current ones, moving the vehicle along whenever a trip uses it, and
+     * reports any decided trip that would use the vehicle from a place it has
+     * not been brought to. Undecided trips are the plan as simulated, so they
+     * are never reported, but they still move the vehicle.
+     */
+    private static void checkVehicleChain(String vehicle, Person person, Plan plan, List<TripStructureUtils.Trip> trips,
+                                          Map<Integer, TripDecision> decided, ErrorMessages em) {
+        AvailableModesTool.VehicleAccess access = AvailableModesTool.vehicleAccess(person, plan, vehicle);
+        String location = access.startLocation();
+        for (int i = 0; i < trips.size(); i++) {
+            TripStructureUtils.Trip trip = trips.get(i);
+            TripDecision d = decided.get(i + 1);
+            String mode = d != null ? d.mode() : mainMode(trip);
+            if (!vehicle.equals(mode)) continue;
+            String origin = facilityOf(trip.getOriginActivity());
+            if (d != null) {
+                if (!access.owned()) {
+                    em.addErrorMessages("trip " + d.trip() + ": you have no " + vehicle);
+                } else if (origin != null && location != null
+                        && !AvailableModesTool.normalizeFacility(origin).equals(AvailableModesTool.normalizeFacility(location))) {
+                    em.addErrorMessages("trip " + d.trip() + ": your " + vehicle + " is not at " + origin + " (it is at " + location
+                            + "); use it on the earlier trips too so it is with you, or pick another mode");
+                }
+            }
+            String destination = facilityOf(trip.getDestinationActivity());
+            if (destination != null) location = destination;
+        }
+    }
+
+    /** Routing mode of the trip's first leg, else its first non-walk leg, else its first leg. */
+    private static String mainMode(TripStructureUtils.Trip trip) {
+        List<Leg> legs = trip.getLegsOnly();
+        if (legs.isEmpty()) return null;
+        if (legs.get(0).getRoutingMode() != null) return legs.get(0).getRoutingMode();
+        for (Leg l : legs) if (!"walk".equals(l.getMode())) return l.getMode();
+        return legs.get(0).getMode();
+    }
+
+    private static String facilityOf(Activity act) {
+        return act != null && act.getFacilityId() != null ? act.getFacilityId().toString() : null;
     }
 
     @Override

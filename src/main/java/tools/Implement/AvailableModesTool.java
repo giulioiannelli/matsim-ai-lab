@@ -257,6 +257,32 @@ public class AvailableModesTool implements ITool<String> {
     }
 
     /**
+     * Whether the person may use a vehicle mode at all ({@code owned}) and where
+     * that vehicle is parked at the start of the day (the first real activity of
+     * the plan). Tour-level view used by the one-shot context and by the
+     * decision verifier: a vehicle is usable on a trip only if it was brought to
+     * the trip's origin, so the same rule must be applied consistently when the
+     * facts are presented and when the answer is checked.
+     */
+    public record VehicleAccess(boolean owned, String startLocation) {}
+
+    public static VehicleAccess vehicleAccess(Person person, Plan plan, String vehicleMode) {
+        Map<String, Object> attrs = person.getAttributes().getAsMap();
+        boolean owned;
+        if ("car".equals(vehicleMode)) {
+            boolean hasLicense = attrs.get("hasLicense") == null || decodeYesNo(attrs.get("hasLicense"));
+            String carAvail = attrs.get("carAvail") != null ? attrs.get("carAvail").toString() : "never";
+            owned = hasLicense && !"never".equalsIgnoreCase(carAvail);
+        } else if ("bike".equals(vehicleMode)) {
+            String bikeAvail = attrs.get("bikeAvailability") != null ? attrs.get("bikeAvailability").toString() : "never";
+            owned = !"never".equalsIgnoreCase(bikeAvail);
+        } else {
+            owned = false;
+        }
+        return new VehicleAccess(owned, owned ? findHomeFacility(plan) : null);
+    }
+
+    /**
      * Find the home facility — first real activity in the plan.
      */
     private static String findHomeFacility(Plan plan) {
@@ -288,7 +314,7 @@ public class AvailableModesTool implements ITool<String> {
         return "unknown";
     }
 
-    private static String normalizeFacility(String facilityId) {
+    static String normalizeFacility(String facilityId) {
         if (facilityId == null) return "";
         return facilityId.trim();
     }

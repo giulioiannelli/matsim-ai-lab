@@ -5,6 +5,45 @@ data. Session-level operational logs stay in `.claude/diary/`.
 
 ---
 
+## 2026-09-23 — Campaign run 1 stopped after two iterations: the context block forbade the switch
+
+**Setup**: first campaign run (panel 200, budget 10, 25 iterations, brief
+decision output, seed 4721) launched 15:37 as a systemd user unit with the
+new per-iteration ETA reporter (`progress.txt`, commit 13a31dd).
+
+**What the first two iterations showed** (registered in `runs.md`):
+- 19 of 20 agents locked their day unchanged; the one change was "car out,
+  pt back", i.e. the car left at the destination.
+- The reasoning traces explain it. The one-shot block listed "modes you can
+  use when leaving each place" computed from the *current* plan: a car owner
+  commuting by pt has the car at home, so the block said "from work: walk,
+  pt, car_passenger" and the return trip had no car option. Combined with
+  the ground rule "the car is wherever you last parked it", the 27B concluded
+  it could not drive home and therefore did not drive out either — three
+  car owners on 2–4-transfer pt commutes talked themselves out of the switch
+  explicitly. The panel's target population (car owners stuck on pt) was
+  exactly the one the context made immobile.
+- Persona quality itself was fine: every trace first person, age and job
+  cited, transfers and walking distance weighed sensibly, 0 malformed calls.
+- Speed: 18 min then 11 min per iteration (ETA 21:41, not 18:10). Every
+  one of 22 rounds reloaded the model (581 s, a third of LLM time): sampling
+  `/api/ps` every 5 s caught a colleague running the same 27B at ctx 4096
+  between our calls (a different context size forces a reload). One agent
+  (76-year-old, no car) ran its reasoning to the 6144-token cap in a
+  "Wait, …" re-checking loop after having decided, 448 s over two rounds;
+  the brief-style addendum did not prevent it.
+
+**Fix (this session)**: tour-level vehicle availability. The block now says
+which vehicles the person has and where each is parked at the start of the
+day, states the rule (a vehicle moves with you; driving out and back is
+fine, pt out and driving back is not), and lists the car/bike route option
+for every trip reachable by an unbroken chain, with `"requires":"trip 1 as
+well"` on the conditional ones. `decide_trips` verification now follows the
+same chain with the decided modes applied over the current ones (drive out
++ drive back accepted; drive back alone rejected with a message that says
+what to do). `--max-tokens` added as a hard per-round cap (3072 for brief).
+Tests: 94 Java tests pass.
+
 ## 2026-09-18 — Speed programme: steps 1–2 confirmed, one-shot built, a tool bug found
 
 **Where the time went** (panel smoke, 12 agents, 79 rounds, 4,410 s of LLM

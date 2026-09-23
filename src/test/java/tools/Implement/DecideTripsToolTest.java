@@ -103,6 +103,40 @@ class DecideTripsToolTest {
         assertDoesNotThrow(() -> tool.verifyArguments(ok, ctx, new ErrorMessages()));
     }
 
+    /** Same day as {@link #personHomeWorkHome()} but both trips by pt: the car stays at home. */
+    private static Person personHomeWorkHomeByPt() {
+        Person p = personHomeWorkHome();
+        Plan plan = p.getSelectedPlan();
+        Leg first = (Leg) plan.getPlanElements().get(1);
+        first.setMode("pt"); first.setRoutingMode("pt");
+        return p;
+    }
+
+    @Test
+    void verificationFollowsTheVehicleAlongTheDecidedChain() {
+        Person p = personHomeWorkHomeByPt();
+        Map<String, Object> ctx = new HashMap<>();
+        ctx.put("person", p);
+        DecideTripsTool tool = new DecideTripsTool();
+        // Drive out and drive back: the car is brought to work by trip 1, so trip 2 can use it.
+        Map<String, Object> both = Map.of("decisions", List.of(new TripDecision(1, "car", null), new TripDecision(2, "car", null)));
+        assertDoesNotThrow(() -> tool.verifyArguments(both, ctx, new ErrorMessages()));
+        // Driving back alone: the car is still at home.
+        Map<String, Object> backOnly = Map.of("decisions", List.of(new TripDecision(2, "car", null)));
+        VerificationFailedException ex = assertThrows(VerificationFailedException.class,
+                () -> tool.verifyArguments(backOnly, ctx, new ErrorMessages()));
+        assertTrue(ex.getMessage().contains("car is not at work_f"), ex.getMessage());
+        // Switching trip 1 away from the car breaks a chain the current plan relied on.
+        Person drove = personHomeWorkHome();
+        ctx.put("person", drove);
+        Map<String, Object> broken = Map.of("decisions", List.of(new TripDecision(1, "pt", null), new TripDecision(2, "car", null)));
+        assertThrows(VerificationFailedException.class, () -> tool.verifyArguments(broken, ctx, new ErrorMessages()));
+        // No car at all.
+        drove.getAttributes().putAttribute("carAvail", "never");
+        Map<String, Object> noCar = Map.of("decisions", List.of(new TripDecision(1, "car", null)));
+        assertThrows(VerificationFailedException.class, () -> tool.verifyArguments(noCar, ctx, new ErrorMessages()));
+    }
+
     @Test
     void dtoAcceptsArrayWrappedNestedAndStringified() {
         com.google.gson.Gson gson = new com.google.gson.Gson();

@@ -134,7 +134,7 @@ public class IndividualPrompt {
 			+ "{{toolGuidance}}"
 			+ "\n"
 			+ "Ground rules MATSim needs from you:\n"
-			+ "- Car and bike are location-constrained. You cannot leave home without a car and then drive back from work — the car is wherever you last parked it.\n"
+			+ "- Car and bike move with you. A vehicle starts where it is parked and is usable on a trip only if you brought it there: driving out and driving back is fine, leaving by public transport and driving back is not — the car is wherever you last parked it.\n"
 			+ "- A public transport trip is one trip, even if it shows up as walk -> pt interaction -> pt -> pt interaction -> walk. Treat it as origin-to-destination with mode `pt` and let the routing tool build the chain.\n"
 			+ "{{routingRule}}"
 			+ "- Keep the activities (type, location, order) from the original day; reshape the legs around them. Activity type names (`home`, `work`, `secondary`, ...) come from the scenario and are all valid exactly as given — never rename or \"correct\" them.\n"
@@ -160,7 +160,7 @@ public class IndividualPrompt {
 
 	/** One-shot variant: the facts are already in the message; decide and commit. */
 	public static final String personaOneShotToolGuidance =
-			"The facts you need — your activity chain, which modes you can use from each place, and how long each trip takes by each mode — are already written out in the message below. Read them, weigh them as yourself, and decide. Do not look them up again.\n";
+			"The facts you need — your activity chain, which vehicles you have and where they start the day, and how long each trip takes by each mode — are already written out in the message below. Read them, weigh them as yourself, and decide. Do not look them up again.\n";
 
 	public static final String personaOneShotRoutingRule =
 			"- Do not invent routes or travel times: use the numbers given. If you change a leg's mode or departure time, set the new mode and leave the route out — it will be routed for you. Call `router_tool` only if you really want to see the exact route first.\n";

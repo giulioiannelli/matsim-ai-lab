@@ -51,6 +51,31 @@ class OneShotContextBuilderTest {
         assertEquals(15 * 3600, trips.get(1).departureTime(), 1e-9, "end time + maximum duration");
     }
 
+    private static OneShotContextBuilder.Trip trip(String from, String to) {
+        return new OneShotContextBuilder.Trip(from, to, 8 * 3600, "pt");
+    }
+
+    @Test
+    void vehicleIsUsableAlongAnUnbrokenChainFromWhereItIsParked() {
+        List<OneShotContextBuilder.Trip> tour = List.of(trip("home", "work"), trip("work", "home"));
+        String[] req = OneShotContextBuilder.vehicleRequirements(tour, "home");
+        assertEquals("", req[0], "parked at the origin: no condition");
+        assertEquals("trip 1 as well", req[1], "back from work only if driven there");
+
+        List<OneShotContextBuilder.Trip> longer = List.of(trip("home", "work"), trip("work", "shop"),
+                trip("shop", "home"), trip("home", "gym"), trip("gym", "home"));
+        req = OneShotContextBuilder.vehicleRequirements(longer, "home");
+        assertEquals("", req[0]);
+        assertEquals("trip 1 as well", req[1]);
+        assertEquals("trips 1-2 as well", req[2]);
+        assertEquals("", req[3], "chain restarts whenever a trip leaves from where the vehicle is parked");
+        assertEquals("trip 4 as well", req[4]);
+
+        req = OneShotContextBuilder.vehicleRequirements(tour, "elsewhere");
+        assertEquals(null, req[0], "vehicle never reachable: not offered");
+        assertEquals(null, req[1]);
+    }
+
     @Test
     void parsesAvailableModes() {
         String json = "{\"availableModes\":[{\"mode\":\"walk\",\"available\":true},{\"mode\":\"car\",\"available\":false},{\"mode\":\"pt\",\"available\":true}]}";

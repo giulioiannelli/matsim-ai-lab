@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.population.Activity;
+import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Plan;
 import org.matsim.api.core.v01.population.PlanElement;
 import tools.IToolResponse;
@@ -16,16 +17,16 @@ import tools.Implement.comparison.CompareRoutesTool;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Precomputes, before the first LLM call, the facts an agent otherwise gathers
- * through three or four tool rounds: the activity chain summary, the modes
- * available at each place it visits, and the route comparison for every trip.
+ * through three or four tool rounds: the activity chain summary, which vehicles
+ * it has and where they start the day, and the route comparison for every trip
+ * (vehicle modes listed wherever an unbroken chain of trips can bring the
+ * vehicle there, with the condition spelled out).
  *
  * <p>The existing tools are invoked programmatically with the same context the
  * chat manager would give them, so the numbers are identical to what the model
@@ -38,11 +39,15 @@ public final class OneShotContextBuilder {
 
     /** Modes worth comparing per trip; car_passenger and transit_walk carry no decision. */
     private static final List<String> COMPARED_MODES = List.of("car", "pt", "bike", "walk");
+    private static final List<String> VEHICLE_MODES = List.of("car", "bike");
+    private static final String VEHICLE_RULE =
+            "Walk, pt and car_passenger work from anywhere. A car or bike is usable on a trip only if it is with you: "
+            + "it starts where it is parked and moves with you on every trip you make with it. Driving out and driving "
+            + "back is fine; going out by pt and driving back is not.";
     private static final double DEFAULT_FIRST_DEPARTURE = 8 * 3600.0;
     private static final double DEFAULT_ACTIVITY_DURATION = 3600.0;
 
     private final ActivityChainSummaryTool summaryTool = new ActivityChainSummaryTool();
-    private final AvailableModesTool modesTool = new AvailableModesTool();
     private final CompareRoutesTool compareTool = new CompareRoutesTool();
 
     /** One origin-destination pair between consecutive real activities. */
@@ -62,28 +67,41 @@ public final class OneShotContextBuilder {
         sb.append("Your day, activity by activity:\n").append(summary).append("\n\n");
 
         List<Trip> trips = enumerateTrips(plan);
-        Set<String> places = new LinkedHashSet<>();
-        for (Trip t : trips) { places.add(t.fromFacilityId()); }
+        Person person = context.get("person") instanceof Person p ? p : plan.getPerson();
 
-        Map<String, List<String>> availableAt = new LinkedHashMap<>();
-        sb.append("Modes you can use when leaving each place:\n");
-        for (String place : places) {
-            String modesJson = call(modesTool, Map.of("fromFacilityId", place), context);
-            availableAt.put(place, availableModesFrom(modesJson));
-            sb.append("- from ").append(place).append(": ").append(summaryLine(modesJson)).append("\n");
+        sb.append("Your vehicles:\n");
+        Map<String, String[]> requirements = new LinkedHashMap<>();
+        for (String vehicle : VEHICLE_MODES) {
+            AvailableModesTool.VehicleAccess access = person == null
+                    ? new AvailableModesTool.VehicleAccess(false, null)
+                    : AvailableModesTool.vehicleAccess(person, plan, vehicle);
+            if (access.owned() && access.startLocation() != null) {
+                sb.append("- ").append(vehicle).append(": you have one, parked at ")
+                  .append(access.startLocation()).append(" at the start of the day.\n");
+                requirements.put(vehicle, vehicleRequirements(trips, access.startLocation()));
+            } else {
+                sb.append("- ").append(vehicle).append(": none available.\n");
+            }
         }
-        sb.append("\n");
+        sb.append(VEHICLE_RULE).append("\n\n");
 
         sb.append("Route options for each trip, as the network stands today "
-                + "(travel time in seconds, distance in metres; pt includes transfers):\n");
+                + "(travel time in seconds, distance in metres; pt includes transfers; "
+                + "\"requires\" names the earlier trips you must drive or ride as well so the vehicle is with you):\n");
         int n = 0;
         for (Trip t : trips) {
-            n++;
             List<String> modes = new ArrayList<>();
+            Map<String, String> requires = new LinkedHashMap<>();
             for (String m : COMPARED_MODES) {
-                if (availableAt.getOrDefault(t.fromFacilityId(), List.of()).contains(m)) modes.add(m);
+                String[] req = requirements.get(m);
+                if (req == null) {
+                    if (!VEHICLE_MODES.contains(m)) modes.add(m);
+                } else if (req[n] != null) {
+                    modes.add(m);
+                    if (!req[n].isEmpty()) requires.put(m, req[n]);
+                }
             }
-            if (modes.isEmpty()) modes.add("walk");
+            n++;
             Map<String, Object> args = new LinkedHashMap<>();
             args.put("fromFacilityId", t.fromFacilityId());
             args.put("toFacilityId", t.toFacilityId());
@@ -91,9 +109,36 @@ public final class OneShotContextBuilder {
             args.put("departureTimeSeconds", t.departureTime());
             String cmp = call(compareTool, args, context);
             sb.append(String.format(Locale.ROOT, "- trip %d, %s -> %s, leaving %s, currently by %s: %s\n",
-                    n, t.fromFacilityId(), t.toFacilityId(), clock(t.departureTime()), t.currentMode(), routesLine(cmp)));
+                    n, t.fromFacilityId(), t.toFacilityId(), clock(t.departureTime()), t.currentMode(), routesLine(cmp, requires)));
         }
         return sb.toString();
+    }
+
+    /**
+     * For each trip, what it takes to have a vehicle at the trip's origin:
+     * {@code null} when impossible, {@code ""} when the vehicle is parked there
+     * already, otherwise the earlier trips that must also be made with it
+     * (e.g. "drive trip 1 as well"). The vehicle starts at {@code startLocation}
+     * and moves with the traveller on every trip made with it; it is back at a
+     * trip's origin whenever the chain of trips since it was last parked there
+     * is unbroken.
+     */
+    static String[] vehicleRequirements(List<Trip> trips, String startLocation) {
+        String[] out = new String[trips.size()];
+        int chainStart = -1;
+        for (int i = 0; i < trips.size(); i++) {
+            if (startLocation.equals(trips.get(i).fromFacilityId())) {
+                chainStart = i;
+                out[i] = "";
+            } else if (chainStart >= 0) {
+                out[i] = chainStart == i - 1
+                        ? "trip " + (chainStart + 1) + " as well"
+                        : "trips " + (chainStart + 1) + "-" + i + " as well";
+            } else {
+                out[i] = null;
+            }
+        }
+        return out;
     }
 
     /** Consecutive real activities (stage activities such as "pt interaction" are skipped). */
@@ -170,21 +215,18 @@ public final class OneShotContextBuilder {
         return out;
     }
 
-    private static String summaryLine(String modesJson) {
-        try {
-            JsonObject o = JsonParser.parseString(modesJson).getAsJsonObject();
-            if (o.has("summary")) return o.get("summary").getAsString().replaceFirst("^Available modes at [^:]+: ", "");
-        } catch (Exception ignored) { }
-        return modesJson;
-    }
-
-    private static String routesLine(String compareJson) {
+    private static String routesLine(String compareJson, Map<String, String> requires) {
         try {
             JsonObject o = JsonParser.parseString(compareJson).getAsJsonObject();
             JsonArray routes = o.getAsJsonArray("routes");
             if (routes == null) return compareJson;
             List<String> parts = new ArrayList<>();
-            for (JsonElement e : routes) parts.add(e.toString());
+            for (JsonElement e : routes) {
+                JsonObject r = e.getAsJsonObject();
+                String mode = r.has("mode") ? r.get("mode").getAsString() : null;
+                if (mode != null && requires.containsKey(mode)) r.addProperty("requires", requires.get(mode));
+                parts.add(r.toString());
+            }
             return String.join(" ", parts);
         } catch (Exception ignored) { }
         return compareJson;

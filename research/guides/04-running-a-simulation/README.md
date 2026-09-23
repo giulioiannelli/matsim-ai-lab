@@ -237,7 +237,19 @@ One-command launcher with eviction on exit: `scripts/panel-run.sh`
 |-----|--------|
 | `--one-shot` | Precompute activity summary, available modes and route comparisons into the first prompt; advertise only `extract_plan` + `router_tool` (tool schemas 21k → 6.7k chars; ~1–2 rounds per agent instead of ~6.6) |
 | `--decision-output` | Conversation ends with `decide_trips` (per-trip mode / departure-shift list, routed by MATSim) instead of a full plan JSON; implies `--one-shot`; ~1 round, ~50 tokens of output |
+| `--reasoning-style=brief` | Appends a "keep your thinking short" addendum to the persona prompt (campaign default; keeps a reasoning trace) |
+| `--thinking=false` | Disables the model's thinking stream entirely (fastest; no reasoning trace, so persona metrics are not measurable) |
+| `--max-tokens` | Hard per-round cap on reasoning + answer tokens (Ollama `num_predict`), overriding the model profile. Use 3072 with brief decision output: a runaway "Wait, …" re-check loop then costs ≤ 2 min before the retry |
 | `--llm-host` / `--llm-port` | Chat server (default localhost:11434 = the tunnel). Use `--llm-port=11435` for the laptop's Ollama (dev smokes on `qwen3.5:9b` without touching mari) |
+
+The one-shot block presents vehicles at tour level: which vehicles the person
+has and where each is parked at the start of the day, plus the car/bike route
+option for every trip an unbroken chain can bring the vehicle to (`"requires":
+"trip 1 as well"` on the conditional ones). `decide_trips` checks the same
+chain with the decided modes applied, so "drive out and drive back" from a pt
+plan is accepted and "drive back only" is rejected with a hint. Per-place
+availability under the current plan (the old block) made every car owner on
+pt immobile — see lab-log 2026-09-23.
 
 Model residency: requests carry `keepAlive` (config, default 10m) so the
 model stays loaded between rounds and Ollama reuses the prompt prefix;

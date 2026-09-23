@@ -80,6 +80,10 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
             defaultValue = "legacy")
     private String promptVariant;
 
+    @Option(names = {"--max-tokens"},
+            description = "Override maxTokens (Ollama num_predict): hard cap on reasoning + answer tokens per round.")
+    private Integer maxTokensOverride;
+
     @Option(names = {"--context-window"},
             description = "Override total context window in tokens (Ollama num_ctx). 0 = leave backend default.")
     private Integer contextWindowOverride;
@@ -205,6 +209,9 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         }
         if (contextWindowOverride != null) {
             llmConfig.setContextWindowTokens(contextWindowOverride);
+        }
+        if (maxTokensOverride != null) {
+            llmConfig.setMaxTokens(maxTokensOverride);
         }
         if (thinkingOverride != null) {
             llmConfig.setEnableThinking(thinkingOverride);

@@ -120,6 +120,13 @@ persona-memory speed-ups come after, on the same infrastructure.
   --reasoning-style=brief`** (keeps a reasoning trace for the persona
   metrics). Speed gate met (≤ 45 s reachable once reloads from other
   tenants stop). Next: WP4, then the first campaign run from mari.
+  **Campaign run 1 (2026-09-23)**: stopped at it.2 — the one-shot block
+  listed modes per place under the current plan, so car owners on pt could
+  not switch (19/20 empty decisions). Fixed with tour-level vehicle
+  availability (context + `decide_trips` chain check) and `--max-tokens`
+  (3072) against runaway re-check loops; relaunched after a same-agents
+  smoke. Colleague running the same 27B at ctx 4096 causes a reload on
+  every round (33 % of LLM time) — not ours to fix; step 8 gains urgency.
   8. **Run the MATSim side on mari too** (PI, 2026-09-18: the laptop cannot
      stay open all day). Today the Java simulation runs on the laptop as a
      systemd user unit and only inference is remote, so closing the lid
