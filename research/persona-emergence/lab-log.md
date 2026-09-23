@@ -44,6 +44,32 @@ same chain with the decided modes applied over the current ones (drive out
 what to do). `--max-tokens` added as a hard per-round cap (3072 for brief).
 Tests: 94 Java tests pass.
 
+**Campaign run 2 (16:30–19:36, registered in `runs.md`)**: the first complete
+campaign run. Protocol is now clean at scale: 250/250 decisions applied in
+one round each, no retries, no verification failures, no cap hits, 39 s
+median per agent (25 % of LLM time still colleague-induced reloads). Persona
+emergence 78 % on brief reasoning, no loops or contradictions. The panel
+logic behaved as designed: 200 first reviews, then the score-drop trigger
+took over from iteration 21 (39 agents seen twice or more). The ground did
+not move (executed score 20.16 → 20.17, mode shares within a point).
+
+The substantive result is the scoring verdict. The 27B changed 59 of 250
+days (42 distinct agents), almost always pt → car out and back (102 car legs,
+4 pt, 7 walk, no departure shifts), citing transfers and age. At iteration
+25 the LLM-decided modes sit in the selected plan for only 16 of the 42
+changed agents (best-scoring plan: 17/42): under capacity factor 0.1 the car
+option is often slower than pt and MATSim's scoring sends most of these
+agents back to pt. This is the "MATSim has the final word" mode working —
+persona preference proposes, the utility function disposes — and it is the
+first quantitative measure of how often the two disagree. Open questions for
+WP4: does the LLM re-propose car when re-selected by score drop (39 repeats
+to inspect), and how does the 16/42 survival compare with a rule-based
+control on the same panel.
+
+Housekeeping: `scripts/ollama-gpu.sh evict` now leaves alone an instance of
+our model name loaded at a different context size (the colleague's ctx-4096
+27B shares the name `qwen3.6:27b`); `status` prints the context length.
+
 ## 2026-09-18 — Speed programme: steps 1–2 confirmed, one-shot built, a tool bug found
 
 **Where the time went** (panel smoke, 12 agents, 79 rounds, 4,410 s of LLM
