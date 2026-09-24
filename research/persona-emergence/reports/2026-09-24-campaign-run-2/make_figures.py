@@ -9,7 +9,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 OUT = Path(__file__).resolve().parent / "figures"
 D2 = ROOT / "output/siouxfalls-c0.10-warm-qwen3.6-27b-T0.3-N3072-reasoning-persona-cmp-oneshot-decide-brief-s4721-panel200q10"
 D1 = ROOT / "output/siouxfalls-c0.10-warm-qwen3.6-27b-T0.3-N6144-reasoning-persona-cmp-oneshot-decide-brief-s4721-panel200q10"

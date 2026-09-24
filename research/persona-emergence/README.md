@@ -166,4 +166,4 @@ Ordered by cost; each step gates on "metrics not regressed" (multi-seed).
 - `runs.md` — run registry (one row per simulation, no exceptions).
 - future: `scenarios/` notes, figures, paper drafts.
 
-- `paper/` — five-page report on campaign run 2 (2026-09-23): `paper.pdf`, source `paper.tex`, `make_figures.py` (regenerates `figures/` and `numbers.json` from the run output).
+- `reports/` — dated reports, one folder each. `2026-09-24-campaign-run-2/`: `report.pdf` (achieved / not achieved / issues / what the model decides), source `report.tex`, `make_figures.py` and `analyze_reasoning.py` (regenerate `figures/`, `numbers*.json` from the run output).

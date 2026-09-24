@@ -1,0 +1,101 @@
+{
+ "factors": {
+  "transfers": 221,
+  "travel time": 250,
+  "age": 228,
+  "car ownership / rule": 249,
+  "comfort / hassle": 203,
+  "walking distance": 150,
+  "reliability / waiting": 148,
+  "work / employment": 204,
+  "weather": 80,
+  "parking": 22,
+  "health / exercise": 11,
+  "flexibility / no rush": 6,
+  "cost / money": 3
+ },
+ "n": 250,
+ "switch_to_slower_than_current": 16,
+ "switch_faster_or_equal": 97,
+ "penalty_vs_fastest_median_min": 0.0,
+ "penalty_max_min": 33.048899999999655,
+ "switch_pairs": {
+  "pt->car": 84,
+  "walk->car": 18,
+  "walk->pt": 2,
+  "pt->walk": 7,
+  "car->pt": 2
+ },
+ "switched_pt_transfers_median": 2,
+ "owner_pt_trips": 86,
+ "owner_pt_trips_switched": 84,
+ "kept_pt_though_car_faster": 0,
+ "switched_though_car_slower": 14,
+ "owner_trips_by_current_mode": {
+  "pt": "84/86",
+  "car": "0/270",
+  "walk": "18/18"
+ },
+ "carless_trips_by_current_mode": {
+  "pt": {
+   "kept": 105,
+   "walk": 7
+  },
+  "walk": {
+   "pt": 2,
+   "kept": 12
+  }
+ },
+ "penalties_positive": 16,
+ "penalty_mean_when_positive": 13.257173958333356,
+ "switch_rate_by_transfers": {
+  "0": "6/6",
+  "2": "69/71",
+  "4": "9/9"
+ },
+ "change_by_age_car": {
+  "0-30 car=True": "4/32",
+  "0-30 car=False": "1/22",
+  "30-50 car=True": "18/61",
+  "30-50 car=False": "1/14",
+  "50-65 car=True": "16/52",
+  "50-65 car=False": "2/14",
+  "65-120 car=True": "16/42",
+  "65-120 car=False": "1/13"
+ },
+ "queries_carless": 63,
+ "changes_carless": 5,
+ "queries_car": 187,
+ "changes_car": 54,
+ "tokens_keep_median": 722,
+ "tokens_change_median": 784,
+ "waits_median": 0.0,
+ "waits_ge3": 2,
+ "waits_max": 4,
+ "think_chars_median": 1619.0,
+ "content_chars_median": 812.0,
+ "empty_content": 0,
+ "restates_numbers": 232,
+ "quotes": [
+  [
+   "switch to car",
+   53,
+   "Looking at this plan, I'm supposed to take public transport both ways with 4 transfers each time. That's a lot of walking around and waiting for connections \u2014 especially at my age. Four transfers means getting on and off multiple times, which is tiring."
+  ],
+  [
+   "carless, 65+",
+   76,
+   "Looking at my day, I'm heading out from home at 11:17 to a secondary activity, staying until 12:32, then coming back home. That timing feels fine for me - a nice midday outing. I don't have a car or bike available, so my choices are really just public transport or walking."
+  ],
+  [
+   "switch to walk",
+   43,
+   "Looking at this day plan, I'm struck by how many transfers the public transport trips involve. Trip 1 has 6 transfers and trip 2 has 8 transfers! That's exhausting\u2014getting on and off buses or trains that many times, waiting at stops, dealing with connections..."
+  ],
+  [
+   "re-check loop (thinking)",
+   80,
+   "at's a bit of a hike, but doable if I'm in good shape. However, PT takes ~35 mins and involves transfers (2 transfers). Wait, the route options say \"transfers\": 2 for PT. That means getting on/off multiple times, which can be tiring for an elderly person. But walking 45 minutes straight might also be tough. Actually, PT is faster and less physically demanding than walking 2.2 k"
+  ]
+ ]
+}
