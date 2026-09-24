@@ -165,3 +165,5 @@ Ordered by cost; each step gates on "metrics not regressed" (multi-seed).
 - `lab-log.md` — dated scientific log: what was run, what was learned.
 - `runs.md` — run registry (one row per simulation, no exceptions).
 - future: `scenarios/` notes, figures, paper drafts.
+
+- `paper/` — five-page report on campaign run 2 (2026-09-23): `paper.pdf`, source `paper.tex`, `make_figures.py` (regenerates `figures/` and `numbers.json` from the run output).

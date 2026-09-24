@@ -56,10 +56,12 @@ not move (executed score 20.16 → 20.17, mode shares within a point).
 The substantive result is the scoring verdict. The 27B changed 59 of 250
 days (42 distinct agents), almost always pt → car out and back (102 car legs,
 4 pt, 7 walk, no departure shifts), citing transfers and age. At iteration
-25 the LLM-decided modes sit in the selected plan for only 16 of the 42
-changed agents (best-scoring plan: 17/42): under capacity factor 0.1 the car
-option is often slower than pt and MATSim's scoring sends most of these
-agents back to pt. This is the "MATSim has the final word" mode working —
+25, of the 42 changed agents 16 have had the LLM plan dropped from memory
+(scored worst), 26 still hold it and 15 execute it as their best plan; among
+the 24 holding both kinds of plan the score difference is small (median
++0.05 utils, 20/24 within ±0.5). So car and pt score about the same for
+these commuters at cap 0.1 and selection is close to a coin toss, while a
+clear minority of switches were plainly worse. This is the "MATSim has the final word" mode working —
 persona preference proposes, the utility function disposes — and it is the
 first quantitative measure of how often the two disagree. Open questions for
 WP4: does the LLM re-propose car when re-selected by score drop (39 repeats

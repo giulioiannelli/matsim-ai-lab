@@ -127,8 +127,8 @@ persona-memory speed-ups come after, on the same infrastructure.
   (3072) against runaway re-check loops; relaunched after a same-agents
   smoke. **Campaign run 2 complete (16:30–19:36)**: 250/250
   applied, 39 s median/agent, persona 78 %, trigger phase reached at it.21,
-  ground stable; LLM mode changes survive scoring for 16/42 agents (pt→car
-  loses at cap 0.1). WP4 is next. Colleague running the same 27B at ctx 4096 causes a reload on
+  ground stable; of 42 LLM-changed days 16 dropped, 26
+  kept, 15 executed as best (car ≈ pt on score at cap 0.1). WP4 is next. Colleague running the same 27B at ctx 4096 causes a reload on
   every round (33 % of LLM time) — not ours to fix; step 8 gains urgency.
   8. **Run the MATSim side on mari too** (PI, 2026-09-18: the laptop cannot
      stay open all day). Today the Java simulation runs on the laptop as a

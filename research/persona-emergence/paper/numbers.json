@@ -1,0 +1,101 @@
+{
+ "rounds": 250,
+ "agents_queried": 250,
+ "wall_median": 38.691500000000005,
+ "wall_max": 104.799,
+ "wall_mean": 42.475452,
+ "load_total": 2678.101259413,
+ "prompt_total": 847.215843,
+ "gen_total": 7058.439156998,
+ "llm_total": 10618.863,
+ "reload_rounds": 117,
+ "load_share": 0.25220226114726224,
+ "gen_share": 0.6647076204861104,
+ "prompt_share": 0.07978404495848566,
+ "wall_median_noreload": 32.102,
+ "wall_median_reload": 51.991,
+ "ptok_median": 2673.0,
+ "gtok_median": 744.5,
+ "gtok_max": 1461,
+ "gen_tok_s": 26.444514976790767,
+ "prompt_tok_s": 831.1294055911559,
+ "retries": 0,
+ "cap_hits": 0,
+ "applied": 250,
+ "verif_fail": 0,
+ "r1_rounds": 26,
+ "r1_empty": 23,
+ "r1_change": 1,
+ "r1_nodec": 2,
+ "r1_load_share": 0.3572699201587651,
+ "r1_cap_hits": 1,
+ "r1_wall_median": 58.947,
+ "it_wall_median": 381,
+ "run_total_min": 185.96666666666667,
+ "it_wall_min_noreload": 324,
+ "it_wall_max": 580,
+ "keep": 191,
+ "change": 59,
+ "changed_agents": 42,
+ "legs": {
+  "car": 102,
+  "pt": 4,
+  "walk": 7
+ },
+ "shifts": 0,
+ "sel_reasons": {
+  "NEVER_REVIEWED": 200,
+  "SCORE_DROP": 50
+ },
+ "drop_median": 0.21800329422407572,
+ "drop_max": 4.254651777360831,
+ "agents_seen_twice": 39,
+ "re_behaviour": {
+  "changed->change": 17,
+  "kept->keep": 32,
+  "kept->change": 1
+ },
+ "score_first": 20.156842202811966,
+ "score_last": 20.16631701568495,
+ "modes_first": {
+  "car": 0.6113475177304964,
+  "pt": 0.2758274231678487,
+  "walk": 0.11282505910165484
+ },
+ "modes_last": {
+  "car": 0.6021867612293145,
+  "pt": 0.28037825059101656,
+  "walk": 0.11743498817966903
+ },
+ "warm_score_first": 18.76054668004435,
+ "warm_score_last": 20.157843832550185,
+ "warm_modes_first": {
+  "car": 0.7791962174940898,
+  "pt": 0.19018912529550827,
+  "walk": 0.03061465721040189
+ },
+ "stuck_last": 0,
+ "surv_selected": 15,
+ "surv_best": 15,
+ "surv_in_memory": 26,
+ "surv_dropped": 16,
+ "delta_n": 24,
+ "delta_median": 0.0543043853514682,
+ "delta_neg": 11,
+ "delta_within_half": 20,
+ "second_modes": {
+  "car": 15,
+  "walk": 1,
+  "pt": 1
+ },
+ "persona_n": 250,
+ "persona_ok": 195,
+ "fp_median": 3.4450000000000003,
+ "traits": {
+  "age": 241,
+  "car_ownership": 197,
+  "employment": 52
+ },
+ "loops_none": true,
+ "contradictions_none": true
+}
