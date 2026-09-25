@@ -5,6 +5,25 @@ data. Session-level operational logs stay in `.claude/diary/`.
 
 ---
 
+## 2026-09-25 — Why agents drove 33 minutes slower: half arithmetic, half a transfer-count bug
+
+The PI asked how agents could prefer a car 33 minutes slower. The 12
+conversations that chose a slower mode split evenly. Six are not slower over
+the day: the slower morning drive brings the car to work for a much faster
+return, and the traces do that sum explicitly. Six knowingly accept 13–34
+minutes more per day to avoid transfers. But the transfer counts in the
+context were wrong: `CompareRoutesTool.summarise` counts every leg whose
+routing mode is pt, which includes the access and egress walks, so a direct
+bus is reported as 2 transfers, one change as 4 (reported = 2 × real + 2);
+"0 transfers" is a walk-only fallback (identical to the walk option 76/76).
+3,711 of 4,744 bus trips in the final iteration are direct. "Transfers" is
+the most cited reason for switching (221/250 traces). The car times were
+real (told 35/52 min, drove 37/49). Consequence: the run-2 "car owners
+always drive" rule is confounded and must be re-measured with correct
+counts; the bug affects every run that used compare_routes. Also noted:
+MATSim's own strategies gave agent 9632_1 a car-out/bus-back day, which our
+vehicle check forbids for the LLM. Report revised (reports/2026-09-24-…).
+
 ## 2026-09-23 — Campaign run 1 stopped after two iterations: the context block forbade the switch
 
 **Setup**: first campaign run (panel 200, budget 10, 25 iterations, brief

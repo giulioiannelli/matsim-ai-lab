@@ -179,6 +179,50 @@ ax[2].hist([gk, gc], bins=np.arange(300, 1600, 100), stacked=True, color=["#b0b0
 ax[2].set_xlabel("output tokens per query"); ax[2].set_ylabel("queries"); ax[2].legend(frameon=False); ax[2].set_title("(c) how long it thinks")
 fig.savefig(OUT / "fig_who.pdf"); plt.close(fig)
 
+# ---- conversations that chose a mode slower than the current one: day-level view ----
+import csv, gzip
+slow_cases = []
+for r in rows:
+    dmap = {d["trip"]: d["mode"] for d in r["dec"] or []}
+    slower = [t for t, m in dmap.items() if m in r["opts"].get(t, {}) and r["cur"][t] in r["opts"][t]
+              and r["opts"][t][m][0] > r["opts"][t][r["cur"][t]][0] + 1]
+    if not slower: continue
+    before = sum(r["opts"][t][r["cur"][t]][0] for t in r["opts"] if r["cur"][t] in r["opts"][t])
+    after = sum(r["opts"][t][dmap.get(t, r["cur"][t])][0] for t in r["opts"] if dmap.get(t, r["cur"][t]) in r["opts"][t])
+    rep_tr = max((r["opts"][t]["pt"][1] for t in r["opts"] if r["cur"][t] == "pt" and "pt" in r["opts"][t]), default=None)
+    slow_cases.append(dict(age=r["age"], delta_min=(after - before) / 60, reported_transfers=rep_tr, to=sorted(set(dmap.values()))))
+N["slower_conversations"] = len(slow_cases)
+N["slower_day_not_longer"] = sum(c["delta_min"] <= 1 for c in slow_cases)
+N["slower_day_longer"] = sum(c["delta_min"] > 1 for c in slow_cases)
+N["slower_day_longer_range_min"] = [round(min(c["delta_min"] for c in slow_cases if c["delta_min"] > 1)), round(max(c["delta_min"] for c in slow_cases if c["delta_min"] > 1))]
+N["slower_cases"] = slow_cases
+# ---- transfers as reported vs real (final iteration bus trips) ----
+trips = list(csv.DictReader(gzip.open(D / "output_trips.csv.gz", "rt"), delimiter=";"))
+ptlegs = collections.Counter(sum(m == "pt" for m in t["modes"].split("-")) for t in trips if t["main_mode"] == "pt")
+N["final_pt_trips"] = sum(ptlegs.values()); N["final_pt_legs_per_trip"] = dict(sorted(ptlegs.items()))
+rep = collections.Counter()
+for r in rows:
+    for t, d in r["opts"].items():
+        if "pt" in d: rep[d["pt"][1]] += 1
+N["reported_transfers_in_context"] = dict(sorted(rep.items()))
+# does "0 transfers" mean a walk-only pt option? compare with the walk option of the same trip
+zero = [(d["pt"][0], d["walk"][0]) for r in rows for d in r["opts"].values() if "pt" in d and "walk" in d and d["pt"][1] == 0]
+N["zero_transfer_pt_equals_walk"] = f"{sum(abs(a - b) < 60 for a, b in zero)}/{len(zero)}"
+
+fig, ax = plt.subplots(1, 2, figsize=(7.2, 2.3), gridspec_kw=dict(width_ratios=[1.2, 1], wspace=0.35))
+cs = sorted(slow_cases, key=lambda c: c["delta_min"])
+ax[0].bar(range(len(cs)), [c["delta_min"] for c in cs], color=["#55a868" if c["delta_min"] <= 1 else "#c44e52" for c in cs])
+ax[0].axhline(0, color="k", lw=0.7); ax[0].set_xticks(range(len(cs))); ax[0].set_xticklabels([str(c["age"]) for c in cs], fontsize=7)
+ax[0].set_xlabel("agent age (one bar per conversation)"); ax[0].set_ylabel("change of the day's travel time [min]")
+ax[0].set_title("(a) chose a slower trip: whole-day effect", fontsize=9)
+ax[0].text(0.02, 0.95, f"green: day not longer ({N['slower_day_not_longer']})\nred: day longer, accepted ({N['slower_day_longer']})", transform=ax[0].transAxes, va="top", fontsize=7)
+real = sorted(ptlegs); xr = np.arange(len(real))
+ax[1].bar(xr, [ptlegs[k] for k in real], 0.6, color="#55a868", label="real (bus legs - 1)")
+ax[1].set_xticks(xr); ax[1].set_xticklabels([f"{k-1}\n(told {2*k})" for k in real], fontsize=7.5)
+ax[1].set_xlabel("real transfers (what the context reported)"); ax[1].set_ylabel("bus trips, final iteration")
+ax[1].set_title(f"(b) transfers were over-reported", fontsize=9)
+fig.savefig(OUT / "fig_slower.pdf"); plt.close(fig)
+
 json.dump(N, open(Path(__file__).resolve().parent / "numbers_reasoning.json", "w"), indent=1, default=str)
 print(json.dumps({k: v for k, v in N.items() if k != "quotes"}, indent=1, default=str))
 for q in quotes: print("QUOTE", q[0], q[1], "|", q[2][:400])

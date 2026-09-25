@@ -97,5 +97,125 @@
    80,
    "at's a bit of a hike, but doable if I'm in good shape. However, PT takes ~35 mins and involves transfers (2 transfers). Wait, the route options say \"transfers\": 2 for PT. That means getting on/off multiple times, which can be tiring for an elderly person. But walking 45 minutes straight might also be tough. Actually, PT is faster and less physically demanding than walking 2.2 k"
   ]
- ]
+ ],
+ "slower_conversations": 12,
+ "slower_day_not_longer": 6,
+ "slower_day_longer": 6,
+ "slower_day_longer_range_min": [
+  13,
+  34
+ ],
+ "slower_cases": [
+  {
+   "age": 53,
+   "delta_min": 31.37564999999989,
+   "reported_transfers": 4,
+   "to": [
+    "car"
+   ]
+  },
+  {
+   "age": 64,
+   "delta_min": 0.6794499999999971,
+   "reported_transfers": 2,
+   "to": [
+    "car"
+   ]
+  },
+  {
+   "age": 33,
+   "delta_min": -5.895983333333424,
+   "reported_transfers": 2,
+   "to": [
+    "car"
+   ]
+  },
+  {
+   "age": 43,
+   "delta_min": 21.733333333333334,
+   "reported_transfers": 8,
+   "to": [
+    "walk"
+   ]
+  },
+  {
+   "age": 40,
+   "delta_min": -5.635000000000097,
+   "reported_transfers": 2,
+   "to": [
+    "car"
+   ]
+  },
+  {
+   "age": 62,
+   "delta_min": -10.753766666666646,
+   "reported_transfers": 2,
+   "to": [
+    "car"
+   ]
+  },
+  {
+   "age": 35,
+   "delta_min": 14.402100000000065,
+   "reported_transfers": 2,
+   "to": [
+    "car"
+   ]
+  },
+  {
+   "age": 68,
+   "delta_min": -13.426766666666662,
+   "reported_transfers": 2,
+   "to": [
+    "car"
+   ]
+  },
+  {
+   "age": 35,
+   "delta_min": 34.381116666666884,
+   "reported_transfers": 2,
+   "to": [
+    "car"
+   ]
+  },
+  {
+   "age": 35,
+   "delta_min": 13.230599999999564,
+   "reported_transfers": 2,
+   "to": [
+    "car"
+   ]
+  },
+  {
+   "age": 53,
+   "delta_min": 30.456316666667348,
+   "reported_transfers": 4,
+   "to": [
+    "car"
+   ]
+  },
+  {
+   "age": 73,
+   "delta_min": -14.01869999999993,
+   "reported_transfers": 2,
+   "to": [
+    "car"
+   ]
+  }
+ ],
+ "final_pt_trips": 4744,
+ "final_pt_legs_per_trip": {
+  "1": 3711,
+  "2": 777,
+  "3": 234,
+  "4": 22
+ },
+ "reported_transfers_in_context": {
+  "0": 76,
+  "2": 310,
+  "4": 75,
+  "6": 31,
+  "8": 8
+ },
+ "zero_transfer_pt_equals_walk": "76/76"
 }
