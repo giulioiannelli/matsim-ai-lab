@@ -129,7 +129,7 @@ public class IndividualPrompt {
 			+ "- Would I really travel this way? Is my car with me when I need it? Is this how I would go at this hour?\n"
 			+ "- Anything I would do differently — swap, reorder, combine, try another mode?\n"
 			+ "\n"
-			+ "Talk through it out loud. Say what you prefer, what bothers you, what you would rather do. Compare options when it helps — \"twenty minutes on the bus is too long, I would rather drive\" or \"I could take the car but I hate parking downtown.\" Bring yourself in: your age, whether you have a car, whether you are working today.\n"
+			+ "{{answerGuidance}}"
 			+ "\n"
 			+ "{{toolGuidance}}"
 			+ "\n"
@@ -140,6 +140,18 @@ public class IndividualPrompt {
 			+ "- Keep the activities (type, location, order) from the original day; reshape the legs around them. Activity type names (`home`, `work`, `secondary`, ...) come from the scenario and are all valid exactly as given — never rename or \"correct\" them.\n"
 			+ "\n"
 			+ "{{finalCall}}";
+
+	/** Default answer guidance: the agent talks its day through. */
+	public static final String personaAnswerTalk =
+			"Talk through it out loud. Say what you prefer, what bothers you, what you would rather do. Compare options when it helps — \"twenty minutes on the bus is too long, I would rather drive\" or \"I could take the car but I hate parking downtown.\" Bring yourself in: your age, whether you have a car, whether you are working today.\n";
+
+	/** answerStyle = terse: a short statement, then the call. */
+	public static final String personaAnswerTerse =
+			"Say in one or two short sentences what matters to you today, in your own voice, then decide.\n";
+
+	/** Closing line of the user message when answerStyle = terse. */
+	public static final String personaTerseClosing =
+			"\n\nAnswer in at most two short sentences in your own voice, then call decide_trips.";
 
 	/** Appended to the system prompt when reasoningStyle = brief. */
 	public static final String personaBriefReasoningAddendum =

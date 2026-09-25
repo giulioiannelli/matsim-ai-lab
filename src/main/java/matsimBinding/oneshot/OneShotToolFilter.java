@@ -16,14 +16,19 @@ public final class OneShotToolFilter implements ToolFilter {
 
     public static final Set<String> VISIBLE = Set.of("extract_plan", "router_tool");
     public static final Set<String> VISIBLE_DECISION = Set.of("decide_trips", "router_tool");
+    /** Compact context: the route options are in the prompt, only the decision is left to make. */
+    public static final Set<String> VISIBLE_DECISION_ONLY = Set.of("decide_trips");
 
     private final Set<String> visible;
 
     public OneShotToolFilter() { this(false); }
 
     /** @param decisionOutput advertise decide_trips instead of extract_plan */
-    public OneShotToolFilter(boolean decisionOutput) {
-        this.visible = decisionOutput ? VISIBLE_DECISION : VISIBLE;
+    public OneShotToolFilter(boolean decisionOutput) { this(decisionOutput, false); }
+
+    /** @param decisionOnly advertise decide_trips alone (compact context) */
+    public OneShotToolFilter(boolean decisionOutput, boolean decisionOnly) {
+        this.visible = decisionOutput ? (decisionOnly ? VISIBLE_DECISION_ONLY : VISIBLE_DECISION) : VISIBLE;
     }
 
     @Override

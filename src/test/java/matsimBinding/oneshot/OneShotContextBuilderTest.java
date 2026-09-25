@@ -88,4 +88,19 @@ class OneShotContextBuilderTest {
         assertEquals(java.util.Set.of("extract_plan", "router_tool"),
                 new OneShotToolFilter().visibleTools(null));
     }
+
+    @Test
+    void compactRoutesLineRoundsAndKeepsConditions() {
+        String json = "{\"routes\":[{\"mode\":\"car\",\"travelTimeSeconds\":2114.859,\"distanceMeters\":4898.67,\"transfers\":0,\"feasible\":true},"
+                + "{\"mode\":\"pt\",\"travelTimeSeconds\":1546.0,\"distanceMeters\":2340.8,\"transfers\":1,\"feasible\":true},"
+                + "{\"mode\":\"bike\",\"travelTimeSeconds\":0,\"distanceMeters\":0,\"transfers\":0,\"feasible\":false}]}";
+        assertEquals("car 35 min, 4.9 km (requires trip 1 as well); pt 26 min, 2.3 km, 1 transfers",
+                OneShotContextBuilder.compactRoutesLine(json, java.util.Map.of("car", "trip 1 as well")));
+    }
+
+    @Test
+    void decisionOnlyFilterAdvertisesDecideTripsAlone() {
+        assertEquals(java.util.Set.of("decide_trips"), new OneShotToolFilter(true, true).visibleTools(null));
+        assertEquals(java.util.Set.of("decide_trips", "router_tool"), new OneShotToolFilter(true, false).visibleTools(null));
+    }
 }

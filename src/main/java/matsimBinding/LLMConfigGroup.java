@@ -458,6 +458,20 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
      */
     private String reasoningStyle = "free";
 
+    /**
+     * Decision output only: leave the raw plan JSON out of the user message (the
+     * precomputed activity chain and route options carry the same facts), render
+     * route options in minutes and kilometres, and advertise only decide_trips.
+     * Cuts the prompt by about a third.
+     */
+    private boolean compactContext = false;
+
+    /**
+     * How much the agent is asked to say around its decision: "talk" (default,
+     * talk the day through) or "terse" (one or two sentences, then the call).
+     */
+    private String answerStyle = "talk";
+
     /** Panel mode: maximum number of LLM queries per iteration. */
     private int maxQueriesPerIteration = 10;
 
@@ -858,6 +872,20 @@ public class LLMConfigGroup extends ReflectiveConfigGroup {
     public void setReasoningStyle(String reasoningStyle) { this.reasoningStyle = reasoningStyle == null ? "free" : reasoningStyle; }
 
     public boolean isBriefReasoning() { return "brief".equalsIgnoreCase(reasoningStyle); }
+
+    @StringGetter("compactContext")
+    public boolean isCompactContext() { return compactContext; }
+
+    @StringSetter("compactContext")
+    public void setCompactContext(boolean compactContext) { this.compactContext = compactContext; }
+
+    @StringGetter("answerStyle")
+    public String getAnswerStyle() { return answerStyle; }
+
+    @StringSetter("answerStyle")
+    public void setAnswerStyle(String answerStyle) { this.answerStyle = answerStyle == null ? "talk" : answerStyle; }
+
+    public boolean isTerseAnswer() { return "terse".equalsIgnoreCase(answerStyle); }
 
     @StringGetter("panelMode")
     public boolean isPanelMode() { return panelMode; }

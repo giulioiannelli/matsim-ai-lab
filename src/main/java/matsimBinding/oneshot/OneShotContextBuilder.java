@@ -48,7 +48,13 @@ public final class OneShotContextBuilder {
     private static final double DEFAULT_ACTIVITY_DURATION = 3600.0;
 
     private final ActivityChainSummaryTool summaryTool = new ActivityChainSummaryTool();
+    private final boolean compact;
     private final CompareRoutesTool compareTool = new CompareRoutesTool();
+
+    public OneShotContextBuilder() { this(false); }
+
+    /** @param compact route options in minutes and kilometres instead of raw JSON */
+    public OneShotContextBuilder(boolean compact) { this.compact = compact; }
 
     /** One origin-destination pair between consecutive real activities. */
     public record Trip(String fromFacilityId, String toFacilityId, double departureTime, String currentMode) {}
@@ -86,7 +92,8 @@ public final class OneShotContextBuilder {
         sb.append(VEHICLE_RULE).append("\n\n");
 
         sb.append("Route options for each trip, as the network stands today "
-                + "(travel time in seconds, distance in metres; pt includes transfers; "
+                + (compact ? "(" : "(travel time in seconds, distance in metres; ")
+                + "pt includes transfers; "
                 + "\"requires\" names the earlier trips you must drive or ride as well so the vehicle is with you):\n");
         int n = 0;
         for (Trip t : trips) {
@@ -109,7 +116,8 @@ public final class OneShotContextBuilder {
             args.put("departureTimeSeconds", t.departureTime());
             String cmp = call(compareTool, args, context);
             sb.append(String.format(Locale.ROOT, "- trip %d, %s -> %s, leaving %s, currently by %s: %s\n",
-                    n, t.fromFacilityId(), t.toFacilityId(), clock(t.departureTime()), t.currentMode(), routesLine(cmp, requires)));
+                    n, t.fromFacilityId(), t.toFacilityId(), clock(t.departureTime()), t.currentMode(),
+                    compact ? compactRoutesLine(cmp, requires) : routesLine(cmp, requires)));
         }
         return sb.toString();
     }
@@ -213,6 +221,28 @@ public final class OneShotContextBuilder {
             // malformed: compare nothing rather than fail the query
         }
         return out;
+    }
+
+    /** "car 35 min, 4.9 km; pt 26 min, 2.3 km, 1 transfers; walk 57 min, 2.9 km" (infeasible options dropped). */
+    static String compactRoutesLine(String compareJson, Map<String, String> requires) {
+        try {
+            JsonObject o = JsonParser.parseString(compareJson).getAsJsonObject();
+            JsonArray routes = o.getAsJsonArray("routes");
+            if (routes == null) return compareJson;
+            List<String> parts = new ArrayList<>();
+            for (JsonElement e : routes) {
+                JsonObject r = e.getAsJsonObject();
+                if (r.has("feasible") && !r.get("feasible").getAsBoolean()) continue;
+                String mode = r.get("mode").getAsString();
+                StringBuilder p = new StringBuilder(String.format(Locale.ROOT, "%s %d min, %.1f km", mode,
+                        Math.round(r.get("travelTimeSeconds").getAsDouble() / 60.0), r.get("distanceMeters").getAsDouble() / 1000.0));
+                if ("pt".equals(mode) && r.has("transfers")) p.append(", ").append(r.get("transfers").getAsInt()).append(" transfers");
+                if (requires.containsKey(mode)) p.append(" (requires ").append(requires.get(mode)).append(")");
+                parts.add(p.toString());
+            }
+            return String.join("; ", parts);
+        } catch (Exception ignored) { }
+        return compareJson;
     }
 
     private static String routesLine(String compareJson, Map<String, String> requires) {

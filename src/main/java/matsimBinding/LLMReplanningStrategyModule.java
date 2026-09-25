@@ -97,7 +97,7 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 
 	private Map<String,Object> contextObject = new HashMap<>();
 
-	private final matsimBinding.oneshot.OneShotContextBuilder oneShotBuilder = new matsimBinding.oneshot.OneShotContextBuilder();
+	private matsimBinding.oneshot.OneShotContextBuilder oneShotBuilder;
 
 	private BufferedWriter csvWriter = null;
 	
@@ -270,11 +270,12 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 		  try {
 			chat.clear();
 			String basePlan = PlanDTO.toDTOFromBaseObject().apply(plan).toJsonObject(this.gson).toString();
+			if (oneShotBuilder == null) oneShotBuilder = new matsimBinding.oneshot.OneShotContextBuilder(compactContext());
 			String precomputed = llmConfig.isOneShotContext()
 					? oneShotBuilder.build(plan, chat.getContextObject())
 					: "";
 			String userPrompt = buildUserPromptForVariant(llmConfig.getPromptVariant(), basePlan, precomputed,
-					llmConfig.getFinalToolName());
+					llmConfig.getFinalToolName(), compactContext(), llmConfig.isTerseAnswer());
 			System.out.println("Sending querry for person Id "+ person.getId());
 			System.out.println(userPrompt);
 
@@ -372,10 +373,10 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 	 * an addendum describing them is appended to the chosen base prompt.
 	 */
 	private static String buildSystemMessageForVariant(String variant, Person person,
-			boolean comparisonToolsEnabled, boolean oneShot, boolean decisionOutput, boolean briefReasoning) {
+			boolean comparisonToolsEnabled, boolean oneShot, boolean decisionOutput, boolean briefReasoning, boolean terse) {
 		String base;
 		if ("persona".equalsIgnoreCase(variant)) {
-			base = prompts.PersonaPromptBuilder.buildSystemPrompt(person, oneShot, decisionOutput);
+			base = prompts.PersonaPromptBuilder.buildSystemPrompt(person, oneShot, decisionOutput, terse);
 		} else {
 			base = IndividualPrompt.planReconstructionSystemPrompt
 					+ " You are person " + person.getId().toString();
@@ -387,10 +388,16 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 		return base;
 	}
 
+	/** Compact context applies to decision output only (extract_plan needs the plan JSON). */
+	private boolean compactContext() {
+		return llmConfig.isCompactContext() && llmConfig.isDecisionOutput();
+	}
+
 	/** User message that carries the plan JSON (+ optional precomputed block); shape depends on prompt variant. */
-	private static String buildUserPromptForVariant(String variant, String basePlanJson, String precomputed, String finalTool) {
+	private static String buildUserPromptForVariant(String variant, String basePlanJson, String precomputed, String finalTool,
+			boolean compact, boolean terse) {
 		if ("persona".equalsIgnoreCase(variant)) {
-			return prompts.PersonaPromptBuilder.buildTaskPrompt(basePlanJson, precomputed, finalTool);
+			return prompts.PersonaPromptBuilder.buildTaskPrompt(basePlanJson, precomputed, finalTool, compact, terse);
 		}
 		return IndividualPrompt.planReconstructionTaskPrompt + "\n" + basePlanJson
 				+ (precomputed.isEmpty() ? "" : "\n\n" + precomputed);
@@ -506,13 +513,14 @@ public class LLMReplanningStrategyModule implements StartupListener, PlanStrateg
 					llmConfig.isComparisonToolsEnabled(),
 					llmConfig.isOneShotContext(),
 					llmConfig.isDecisionOutput(),
-					llmConfig.isBriefReasoning()));
+					llmConfig.isBriefReasoning(),
+					llmConfig.isTerseAnswer()));
 			chatManager.setPersonId(person.getId());
 			chatManager.setContextObject(new HashMap<>(this.contextObject));
 			chatManager.getContextObject().put("person",person);
 
 			if (llmConfig.isOneShotContext()) {
-				chatManager.setToolFilter(new matsimBinding.oneshot.OneShotToolFilter(llmConfig.isDecisionOutput()));
+				chatManager.setToolFilter(new matsimBinding.oneshot.OneShotToolFilter(llmConfig.isDecisionOutput(), compactContext()));
 			} else if ("staged".equalsIgnoreCase(System.getenv("MATSIM_LLM_TOOL_FILTER"))) {
 				chatManager.setToolFilter(new tools.StagedToolFilter());
 			}

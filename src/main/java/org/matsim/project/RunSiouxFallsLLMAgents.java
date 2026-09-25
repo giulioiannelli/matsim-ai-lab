@@ -146,6 +146,21 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
                     + "instead of extract_plan (full plan JSON). Implies --one-shot.")
     private boolean decisionOutput;
 
+    @Option(names = {"--compact-context"},
+            description = "With --decision-output: leave the raw plan JSON out of the prompt, round route options "
+                    + "to minutes and kilometres, advertise only decide_trips.")
+    private boolean compactContext;
+
+    @Option(names = {"--answer-style"},
+            description = "'talk' (default: talk the day through) or 'terse' (one or two sentences, then the decision).",
+            defaultValue = "talk")
+    private String answerStyle;
+
+    @Option(names = {"--gpu-layers"},
+            description = "Override the profile's gpuLayers (Ollama num_gpu). 0 = let the server decide, which lets "
+                    + "requests share an instance another client already loaded with the same context size.")
+    private Integer gpuLayersOverride;
+
     @Option(names = {"--panel"},
             description = "Panel mode: AI agents keep all rule-based strategies; the LLM strategy is forced on a "
                     + "budgeted, trigger-selected subset each iteration. Off = legacy LLM-only subpopulation.")
@@ -217,6 +232,11 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
             llmConfig.setEnableThinking(thinkingOverride);
         }
         llmConfig.setReasoningStyle(reasoningStyle);
+        llmConfig.setCompactContext(compactContext);
+        llmConfig.setAnswerStyle(answerStyle);
+        if (gpuLayersOverride != null) {
+            llmConfig.setGpuLayers(gpuLayersOverride);
+        }
         llmConfig.setPromptVariant(promptVariant);
         llmConfig.setComparisonToolsEnabled(enableComparisonTools);
 
@@ -355,6 +375,9 @@ public final class RunSiouxFallsLLMAgents implements Callable<Integer> {
         if (cfg.isDecisionOutput()) sb.append("-decide");
         if (cfg.isReasoningModel() && !cfg.isEnableThinking()) sb.append("-nothink");
         if (cfg.isBriefReasoning()) sb.append("-brief");
+        if (cfg.isCompactContext() && cfg.isDecisionOutput()) sb.append("-compact");
+        if (cfg.isTerseAnswer()) sb.append("-terse");
+        if (cfg.getContextWindowTokens() > 0 && cfg.getContextWindowTokens() != 12288) sb.append("-ctx").append(cfg.getContextWindowTokens());
         if (seed != null) sb.append("-s").append(seed);
         return sb.toString();
     }

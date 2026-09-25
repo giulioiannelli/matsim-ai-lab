@@ -48,9 +48,15 @@ public final class PersonaPromptBuilder {
 
     /** @param decisionOutput the conversation ends with decide_trips instead of extract_plan */
     public static String buildSystemPrompt(Person person, boolean oneShot, boolean decisionOutput) {
+        return buildSystemPrompt(person, oneShot, decisionOutput, false);
+    }
+
+    /** @param terse ask for one or two sentences around the decision instead of a talk-through */
+    public static String buildSystemPrompt(Person person, boolean oneShot, boolean decisionOutput, boolean terse) {
         String personaLines = composePersonaLines(person);
         return IndividualPrompt.personaSystemPromptTemplate
                 .replace("{{personaLines}}", personaLines)
+                .replace("{{answerGuidance}}", terse ? IndividualPrompt.personaAnswerTerse : IndividualPrompt.personaAnswerTalk)
                 .replace("{{toolGuidance}}", oneShot ? IndividualPrompt.personaOneShotToolGuidance : IndividualPrompt.personaToolGuidance)
                 .replace("{{routingRule}}", oneShot ? IndividualPrompt.personaOneShotRoutingRule : IndividualPrompt.personaRoutingRule)
                 .replace("{{finalCall}}", decisionOutput ? IndividualPrompt.personaFinalCallDecide : IndividualPrompt.personaFinalCallExtract);
@@ -71,6 +77,16 @@ public final class PersonaPromptBuilder {
 
     /** @param finalTool name of the tool that locks the day in (extract_plan or decide_trips) */
     public static String buildTaskPrompt(String planJson, String precomputedBlock, String finalTool) {
+        return buildTaskPrompt(planJson, precomputedBlock, finalTool, false, false);
+    }
+
+    /**
+     * @param compact leave the plan JSON out (the precomputed block carries the day)
+     * @param terse   drop the talk-through request and close with a short-answer instruction
+     */
+    public static String buildTaskPrompt(String planJson, String precomputedBlock, String finalTool,
+                                         boolean compact, boolean terse) {
+        boolean hasBlock = precomputedBlock != null && !precomputedBlock.isEmpty();
         String lockIn = "decide_trips".equals(finalTool)
                 ? " Keeping the day exactly as it is can be the right call, but you must still call"
                   + " decide_trips (with an empty list) to lock it in."
@@ -78,14 +94,16 @@ public final class PersonaPromptBuilder {
                 : " Keeping the plan exactly as it is can be"
                   + " the right call, but you must still call extract_plan with it to lock it in."
                   + " As soon as you are satisfied, call extract_plan with your final plan.";
-        return IndividualPrompt.personaTaskPrompt
-                + planJson
-                + (precomputedBlock == null || precomputedBlock.isEmpty() ? "" : "\n\n" + precomputedBlock)
+        String head = compact && hasBlock
+                ? precomputedBlock
+                : IndividualPrompt.personaTaskPrompt + planJson + (hasBlock ? "\n\n" + precomputedBlock : "");
+        return head
                 + "\n\nReorganize it as you see fit — keep what feels right, change what doesn't."
-                + " Talk through your choices as you go."
+                + (terse ? "" : " Talk through your choices as you go.")
                 + " Once you have the facts you need, decide and commit — don't re-check routes"
                 + " or modes you have already looked up."
-                + lockIn;
+                + lockIn
+                + (terse ? IndividualPrompt.personaTerseClosing : "");
     }
 
     /**
